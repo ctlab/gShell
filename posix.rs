@@ -5,13 +5,18 @@ use self::collections::*;
 use std::os;
 
 extern {
-    pub fn ptrace(request: libc::c_int, pid: libc::pid_t, addr: *mut libc::c_void, data: *mut libc::c_void) -> libc::c_long;
     pub fn fork() -> libc::pid_t;
     pub fn exit(status: libc::c_int) -> !;
-    pub fn getpid() -> libc::pid_t;
     pub fn waitpid(pid: libc::pid_t, status: *mut libc::c_int, flags: libc::c_int) -> libc::c_int;
     pub fn kill(pid: libc::pid_t, signal: libc::c_int) -> libc::c_int;
     pub fn strerror(errno: libc::c_int) -> *mut libc::c_char;
+    pub fn ptrace(request: libc::c_int, pid: libc::pid_t, addr: *mut libc::c_void, data: *mut libc::c_void) -> libc::c_long;
+}
+
+pub fn get_strerror(errno: int) -> String {
+    unsafe {
+        collections::string::raw::from_buf(strerror(errno as libc::c_int) as *const u8)
+    }
 }
 
 pub trait CouldBeAnError {
@@ -20,15 +25,10 @@ pub trait CouldBeAnError {
     fn get_errno(&self) -> int;
 }
  
+#[deriving(Show)]
 pub enum PosixResult {
     PosixOk,
     PosixError(int),
-}
-
-pub fn get_strerror(errno: int) -> String {
-    unsafe {
-        collections::string::raw::from_buf(strerror(errno as libc::c_int) as *const u8)
-    }
 }
 
 impl CouldBeAnError for PosixResult {
@@ -54,12 +54,25 @@ impl CouldBeAnError for PosixResult {
     }
 }
 
+#[deriving(Show)]
 pub enum ForkResult {
     ForkFailure(int),
     ForkChild,
     ForkParent(int),
 }
  
+pub fn fork_wrapper() -> ForkResult {
+    unsafe {
+        let pid = fork();
+ 
+        match pid {
+            -1  => ForkFailure(os::errno()),
+            0   => ForkChild,
+            pid => ForkParent(pid as int),
+        }
+    }
+}
+
 impl CouldBeAnError for ForkResult {
     fn is_error(&self) -> bool {
         match *self {
@@ -83,11 +96,26 @@ impl CouldBeAnError for ForkResult {
     }
 }
  
+#[deriving(Show)]
 pub enum WaitPidResult {
     WaitPidFailure(int),
     WaitPidSuccess(int, int),
 }
  
+pub fn waitpid_wrapper(pid: int, flags: int) -> WaitPidResult {
+    unsafe {
+        let mut status : libc::c_int = 0;
+ 
+        let pid = waitpid(pid as libc::pid_t, &mut status as *mut libc::c_int, flags as libc::c_int);
+ 
+        if pid == -1 {
+            WaitPidFailure(os::errno())
+        } else {
+            WaitPidSuccess(pid as int, status as int)
+        }
+    }
+}
+
 impl CouldBeAnError for WaitPidResult {
     fn is_error(&self) -> bool {
         match *self {
@@ -111,38 +139,6 @@ impl CouldBeAnError for WaitPidResult {
     }
 }
  
-pub fn fork_wrapper() -> ForkResult {
-    unsafe {
-        let pid = fork();
- 
-        match pid {
-            -1  => ForkFailure(os::errno()),
-            0   => ForkChild,
-            pid => ForkParent(pid as int),
-        }
-    }
-}
- 
-pub fn getpid_wrapper() -> int {
-    unsafe {
-        getpid() as int
-    }
-}
- 
-pub fn waitpid_wrapper(pid: int, flags: int) -> WaitPidResult {
-    unsafe {
-        let status : libc::c_int = 0;
- 
-        let pid = waitpid(pid as libc::pid_t, status as *mut libc::c_int, flags as libc::c_int);
- 
-        if pid == -1 {
-            WaitPidFailure(os::errno())
-        } else {
-            WaitPidSuccess(pid as int, status as int)
-        }
-    }
-}
-
 pub fn exit_wrapper(status: int) -> ! {
     unsafe {
         exit(status as libc::c_int)
@@ -157,7 +153,7 @@ pub fn kill_wrapper(pid: int, signum: int) -> PosixResult {
         }
     }
 }
- 
+
 pub static SIGTRAP    : int = 5;
 pub static SIGKILL    : int = 9;
 pub static ECHILD     : int = 10;
