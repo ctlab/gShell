@@ -1,3 +1,3 @@
 all: 
-	rustc main.rs
+	rustc -g --emit="obj,link" main.rs
 
