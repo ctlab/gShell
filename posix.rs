@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 extern crate libc;
 extern crate collections;
-use self::collections::*;
 use std::os;
+use std::str::SendStr;
 
 extern {
     pub fn fork() -> libc::pid_t;
@@ -10,18 +10,17 @@ extern {
     pub fn waitpid(pid: libc::pid_t, status: *mut libc::c_int, flags: libc::c_int) -> libc::c_int;
     pub fn kill(pid: libc::pid_t, signal: libc::c_int) -> libc::c_int;
     pub fn strerror(errno: libc::c_int) -> *mut libc::c_char;
-    pub fn ptrace(request: libc::c_int, pid: libc::pid_t, addr: *mut libc::c_void, data: *mut libc::c_void) -> libc::c_long;
 }
 
-pub fn get_strerror(errno: int) -> String {
+pub fn get_strerror(errno: int) -> SendStr {
     unsafe {
-        collections::string::raw::from_buf(strerror(errno as libc::c_int) as *const u8)
+        collections::string::raw::from_buf(strerror(errno as libc::c_int) as *const u8).into_maybe_owned()
     }
 }
 
 pub trait CouldBeAnError {
     fn is_error(&self) -> bool;
-    fn get_error_as_string(&self) -> String;
+    fn get_error_as_string(&self) -> SendStr;
     fn get_errno(&self) -> int;
 }
  
@@ -39,9 +38,9 @@ impl CouldBeAnError for PosixResult {
         }
     }
  
-    fn get_error_as_string(&self) -> String {
+    fn get_error_as_string(&self) -> SendStr {
         match *self {
-            PosixOk           => "no error".to_string(), //work on &str
+            PosixOk           => "no error".into_maybe_owned(),
             PosixError(errno) => get_strerror(errno),
         }
     }
@@ -81,10 +80,10 @@ impl CouldBeAnError for ForkResult {
         }
     }
  
-    fn get_error_as_string(&self) -> String {
+    fn get_error_as_string(&self) -> SendStr {
         match *self {
             ForkFailure(errno) => get_strerror(errno),
-            _                  => "no error".to_string(),
+            _                  => "no error".into_maybe_owned(),
         }
     }
  
@@ -124,10 +123,10 @@ impl CouldBeAnError for WaitPidResult {
         }
     }
  
-    fn get_error_as_string(&self) -> String {
+    fn get_error_as_string(&self) -> SendStr {
         match *self {
             WaitPidFailure(errno) => get_strerror(errno),
-            _                     => "no error".to_string(),
+            _                     => "no error".into_maybe_owned(),
         }
     }
  

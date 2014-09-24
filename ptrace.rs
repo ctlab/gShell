@@ -3,6 +3,7 @@ use std::os;
 use std::ptr;
 use std::mem;
 use posix::*;
+use std::str::SendStr;
 
 extern {
     pub fn ptrace(request: libc::c_int, pid: libc::pid_t, addr: *mut libc::c_void, data: *mut libc::c_void) -> libc::c_long;
@@ -22,10 +23,10 @@ impl CouldBeAnError for PtraceResult {
         }
     }
  
-    fn get_error_as_string(&self) -> String {
+    fn get_error_as_string(&self) -> SendStr {
         match *self {
             PtraceError(errno) => get_strerror(errno),
-            _                  => "no error".to_string(),
+            _                  => "no error".into_maybe_owned(),
         }
     }
  
@@ -176,10 +177,10 @@ impl CouldBeAnError for TraceResult {
         }
     }
  
-    fn get_error_as_string(&self) -> String {
+    fn get_error_as_string(&self) -> SendStr {
         match *self {
             TraceError(errno) => get_strerror(errno),
-            _                 => "".to_string(),
+            _                 => "".into_maybe_owned(),
         }
     }
  
