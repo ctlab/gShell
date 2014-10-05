@@ -5,6 +5,7 @@ extern crate libc;
 extern crate collections;
 use libc::funcs::posix88::unistd::*;
 use std::os;
+use std::mem;
 use posix::*;
 use std::c_str::CString;
 
@@ -58,8 +59,9 @@ fn main () {
                             if ((status >> 8) & (0x80 | posix::SIGTRAP)) != 0 {
                                 match ptrace::get_registers(pid) {
                                     Ok(ptrace::UserRegs { orig_rax: syscall_no, rdi: rdi, .. }) => {
+                                            //println!("Syscall {} with {}", syscall::get_syscall_name_as_str(syscall_no as uint), handle_syscall_arguments(pid, rdi));
                                         if syscall_no == 2 {
-                                            println!("Syscall {} with {}", syscall::get_syscall_name_as_str(syscall_no as uint), CString::new(rdi as *const i8, false).as_str()); //TODO
+                                            println!("{}", handle_syscall_arguments(pid, rdi));
                                         }
                                         ptrace::syscall(pid); //need this to get only at end
                                         posix::waitpid_wrapper(pid, 0); // and this too
@@ -81,4 +83,52 @@ fn main () {
             }
         }
     }
+}
+
+
+fn pstrdup(word: u64) -> String {
+    unsafe {
+        let mut bytes    = Vec::new();
+        //let mut mut_addr = addr as libc::uint64_t;
+    
+        let mut i = 0;
+
+        // XXX I'm not using a for loop because of a bug in Rust
+        while i < mem::size_of::<libc::uint64_t>() {
+            // XXX byte order
+            let lsb = (word >> (i * 8)) & 0xFF;
+            if lsb == 0 {
+                break;
+            }
+            bytes.push(lsb as u8);
+            i += 1;
+        }
+        //mut_addr += mem::size_of::<libc::uint64_t>() as libc::uint64_t;
+        let result = std::str::raw::from_utf8(bytes.as_slice()).to_string();
+        result
+            //TODO notes touch shows no open, > shows open
+        //println!("Syscall {} with {}", syscall::get_syscall_name_as_str(syscall_no as uint), CString::new(rdi as *const i8, false).as_str()); //TODO
+    }
+}
+ 
+fn get_program_args(pid: int, addr: *mut libc::c_void) -> String {
+    let mut args     = Vec::new();
+    let mut mut_addr = addr as libc::uint64_t;
+ 
+    loop {
+        match ptrace::peektext(pid, mut_addr as *mut libc::c_void) {
+            Err(_) | Ok(0) => break,
+            Ok(word)       => {
+                args.push(pstrdup(word));
+            }
+        }
+ 
+        mut_addr += mem::size_of::<libc::uint64_t>() as libc::uint64_t;
+    }
+    args.concat()
+}
+ 
+fn handle_syscall_arguments(pid: int, argv_ptr: libc::uint64_t) -> String {
+    let argv = get_program_args(pid, argv_ptr as *mut libc::c_void);
+    argv
 }
