@@ -114,18 +114,23 @@ fn pstrdup(word: u64) -> String {
 fn get_program_args(pid: int, addr: *mut libc::c_void) -> String {
     let mut args     = Vec::new();
     let mut mut_addr = addr as libc::uint64_t;
+    let byte_stack
  
     loop {
         match ptrace::peektext(pid, mut_addr as *mut libc::c_void) {
             Err(_) | Ok(0) => break,
             Ok(word)       => {
-                args.push(pstrdup(word));
+                
+                for b in bytes(word):
+                    push(b)
+                    if (b == 0):
+                        break loop
             }
         }
  
-        mut_addr += mem::size_of::<libc::uint64_t>() as libc::uint64_t;
     }
-    args.concat()
+
+    from_utf8(byte_stack)
 }
  
 fn handle_syscall_arguments(pid: int, argv_ptr: libc::uint64_t) -> String {
