@@ -8,6 +8,7 @@ use std::os;
 use std::mem;
 use posix::*;
 use std::c_str::CString;
+use std::io::extensions::*;
 
 mod ptrace;
 mod posix;
@@ -112,25 +113,29 @@ fn pstrdup(word: u64) -> String {
 }
  
 fn get_program_args(pid: int, addr: *mut libc::c_void) -> String {
-    let mut args     = Vec::new();
+    unsafe {
     let mut mut_addr = addr as libc::uint64_t;
-    let byte_stack
+    let mut bytes = Vec::new();
  
-    loop {
+    'j: loop {
         match ptrace::peektext(pid, mut_addr as *mut libc::c_void) {
             Err(_) | Ok(0) => break,
             Ok(word)       => {
-                
-                for b in bytes(word):
-                    push(b)
-                    if (b == 0):
-                        break loop
+                println!("{}", bytes);
+                u64_to_be_bytes(word, 8, |v| bytes.push_all(v) ); // {
+                //for b in 
+                    //if b == 0 {
+                        //break 'j;
+                    //}
+                    //bytes.push(b);
+                //}
             }
         }
  
     }
-
-    from_utf8(byte_stack)
+    let result = std::str::raw::from_utf8(bytes.as_slice()).to_string();
+    result
+}
 }
  
 fn handle_syscall_arguments(pid: int, argv_ptr: libc::uint64_t) -> String {
