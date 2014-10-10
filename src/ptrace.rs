@@ -1,9 +1,9 @@
 extern crate libc;
 use std::os;
-use std::ptr;
 use std::mem;
 use posix::*;
 use std::str::SendStr;
+use std::ptr::null_mut;
 
 extern {
     pub fn ptrace(request: libc::c_int, pid: libc::pid_t, addr: *mut libc::c_void, data: *mut libc::c_void) -> libc::c_long;
@@ -78,19 +78,19 @@ fn to_ptrace_result(return_value: libc::c_long) -> PtraceResult {
  
 pub fn trace_me() -> PtraceResult {
     unsafe {
-        to_ptrace_result(ptrace(TRACEME, 0, ptr::mut_null(), ptr::mut_null()))
+        to_ptrace_result(ptrace(TRACEME, 0, null_mut(), null_mut()))
     }
 }
  
 pub fn setoptions(pid: int, options: int) -> PtraceResult {
     unsafe {
-        to_ptrace_result(ptrace(SETOPTIONS, pid as libc::pid_t, ptr::mut_null(), options as *mut libc::c_void))
+        to_ptrace_result(ptrace(SETOPTIONS, pid as libc::pid_t, null_mut(), options as *mut libc::c_void))
     }
 }
  
 pub fn syscall(pid: int) -> PtraceResult {
     unsafe {
-        to_ptrace_result(ptrace(SYSCALL, pid as libc::pid_t, ptr::mut_null(), ptr::mut_null()))
+        to_ptrace_result(ptrace(SYSCALL, pid as libc::pid_t, null_mut(), null_mut()))
     }
 }
  
@@ -126,7 +126,7 @@ pub fn get_registers(pid: int) -> Result<UserRegs, int> {
           gs        : 0,
         };
  
-        let result = ptrace(GETREGS, pid as libc::pid_t, ptr::mut_null(), mem::transmute(&registers));
+        let result = ptrace(GETREGS, pid as libc::pid_t, null_mut(), mem::transmute(&registers));
  
         if result == -1 {
             Err(os::errno())
@@ -138,7 +138,7 @@ pub fn get_registers(pid: int) -> Result<UserRegs, int> {
  
 pub fn peektext(pid: int, addr: *mut libc::c_void) -> Result<u64, int> {
     unsafe {
-        let result = ptrace(PEEKTEXT, pid as libc::pid_t, addr, ptr::mut_null());
+        let result = ptrace(PEEKTEXT, pid as libc::pid_t, addr, null_mut());
  
         if result == -1 {
             let errno = os::errno();

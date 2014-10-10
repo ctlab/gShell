@@ -3,7 +3,7 @@ use std::str::SendStr;
 #[deriving(Show)]
 pub struct Syscall(&'static str);
 
-pub static syscalls : &'static [Syscall] = [
+pub static SYSCALLS : &'static [Syscall] = [
     Syscall("sys_read"),
     Syscall("sys_write"),
     Syscall("sys_open"),
@@ -320,11 +320,11 @@ pub static syscalls : &'static [Syscall] = [
 
 
 pub fn get_syscall_name(i : uint) -> Syscall {
-    syscalls[i]
+    SYSCALLS[i]
 }
 
 pub fn get_syscall_name_as_str(i : uint) -> SendStr {
-    let Syscall(name) = syscalls[i]; 
+    let Syscall(name) = SYSCALLS[i]; 
     name.into_maybe_owned()
 }
 
