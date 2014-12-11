@@ -100,12 +100,16 @@ initGShell state wp = do
          ExitSuccess -> return $ Succes "GShell is inited"
          ExitFailure i -> return $ Failed $ "Exit with " ++ show i
 
-offGShell :: State -> IO Result
-offGShell state = do
+unmountWorkingFolder :: State -> IO ProcessHandle
+unmountWorkingFolder state = do
     let workFolder = state ^. workingFolder
     let options = ["-uz", workFolder]
-    processHandle <- spawnProcess "fusermount" options
-    exitCode <- waitForProcess processHandle
+    spawnProcess "fusermount" options
+
+offGShell :: State -> IO Result
+offGShell state = do
+    processHandle <- unmountWorkingFolder state
+    exitCode <- waitForProcess  processHandle
     case exitCode of
          ExitSuccess -> return $ Succes "GShell is off"
          ExitFailure i -> return $ Failed $ "Exit with " ++ show i
