@@ -1,53 +1,77 @@
-{-# LANGUAGE DeriveGeneric, OverloadedStrings, TemplateHaskell #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Main where
 
-import Control.Concurrent.MVar ( MVar, newMVar, modifyMVar )
-import Data.ByteString.Char8 ( ByteString )
-import Data.Default ( def )
-import Data.Serialize ( Serialize )
-import Data.String ( fromString )
-import Data.List
-import GHC.Generics
-import System.Environment ( getArgs )
-import System.Daemon
-import Control.Lens
-import System.Process
-import System.Directory
-import System.Exit
-import System.FilePath
-import Control.Monad
+import           Control.Applicative
+import           Control.Lens
+import           Control.Monad
+import           Data.ByteString.Char8 (ByteString)
+import           Data.Default          (def)
+import           Data.Default
+import           Data.List
+import           Data.String           (fromString)
+import           Data.Time.Clock.POSIX
+import           System.Directory
+import           System.Environment    (getArgs)
+import           System.Exit
+import           System.FilePath
+import           System.Process
+import           System.Random
 
-data Command = Init FilePath
-               deriving ( Generic, Show )
+data Command = Init
+             | Off
+             | Clean
+               deriving ( Show )
 
-instance Serialize Command
 
-data Response = Failed String
-              | Succes
-                deriving ( Generic, Show )
+data Result = Failed String
+            | Succes String
+            | Folder FilePath
+            deriving ( Show )
 
-instance Serialize Response
+data State = State { _isOn            :: Bool
+                   , _isOff           :: Bool
+                   , _revision        :: Int
+                   , _gShellDirectory :: FilePath
+                   , _workingFolder   :: FilePath
+                   } deriving ( Show, Read )
 
-data State = State { _isOn :: Bool
-                   , _revision :: Int
-                   , _workingFolder :: FilePath
-                   } deriving ( Generic, Show)
-
-instance Serialize State
+instance Default State where
+    def = State { _isOn = False
+                , _isOff = True
+                , _revision = 0
+                , _gShellDirectory = []
+                , _workingFolder = []
+                }
 
 makeLenses ''State
 
-gShellFolderName :: FilePath
-gShellFolderName = ".gShell"
+directoryName :: FilePath
+directoryName = ".gShell"
 
-gShellRevisionFolderInfix :: FilePath
-gShellRevisionFolderInfix = "rev"
+revisionInfix :: FilePath
+revisionInfix = "rev"
 
-gShellWorkingFolderName :: FilePath
-gShellWorkingFolderName = "work"
+generateWorkDirName :: IO FilePath
+generateWorkDirName = do
+    g <- getStdGen
+    time <- show <$> getPOSIXTime
+    let a = take 5 $ (randomRs ('a', 'z') g)
+    let b = take 5 $ (randomRs ('0', '9') g)
+    let hash = concat $ zipWith (\a b -> a:[b]) a b
+    return $ time ++ "-" ++ hash ++ "-" ++ "work"
 
-gShellWorkingFolder :: FilePath -> FilePath
-gShellWorkingFolder path = path </> gShellFolderName
+rootDirectory :: FilePath -> FilePath
+rootDirectory path = path </> directoryName
+
+readGShellState :: FilePath -> IO State
+readGShellState path = do
+    state <- readFile $ rootDirectory path </> ".state"
+    return $ read state
+
+writeState :: State -> IO ()
+writeState state = writeFile (state ^. gShellDirectory </> ".state") $ show state
 
 makeFoldersRO :: State -> [String]
 makeFoldersRO = makeFolders "RO"
@@ -56,48 +80,85 @@ makeFoldersRW :: State -> [String]
 makeFoldersRW = makeFolders "RW"
 
 makeFolders :: String -> State -> [String]
-makeFolders mode state = return $ intercalate ":" 
-    $ zipWith (++) (repeat $ flip (++) "/" $ state ^. workingFolder) (
+makeFolders mode state = return $ intercalate ":"
+    $ zipWith (++) (repeat $ flip (++) "/" $ state ^. gShellDirectory) (
         zipWith (\a b -> a ++ show b ++ "=" ++ mode) (repeat "rev") [state ^. revision, (-) 1 $ state ^. revision .. 0]
-    ) 
-initGShell :: State -> FilePath -> IO Response
-initGShell state path = do
-    let wp = gShellWorkingFolder path
-    createDirectoryIfMissing True wp
-    createDirectoryIfMissing True $ wp </> gShellWorkingFolderName
-    createDirectoryIfMissing True $ wp </> gShellRevisionFolderInfix ++ (show $ state ^. revision)
-    let folders = makeFoldersRW $ state & workingFolder .~ wp
-    let workingFolder = [wp </> gShellWorkingFolderName]
-    let options = ["-ocow", "-orelaxed_permissions"] ++ folders ++ workingFolder
+    )
+    where
+        toZip = case mode of
+                    "RW" -> [(+) 1 $ state ^. revision]
+                    "RO" -> [state ^. revision, (-) 1 $ state ^. revision .. 0]
+
+initGShell :: State -> FilePath -> IO Result
+initGShell state wp = do
+    let folders = makeFoldersRW $ state & gShellDirectory .~ wp
+    let workFolder =  [state ^. workingFolder]
+    let options = ["-ocow", "-orelaxed_permissions"] ++ folders ++ workFolder
     processHandle <- spawnProcess "unionfs" options
     exitCode <- waitForProcess processHandle
-    case exitCode of 
-         ExitSuccess -> return Succes
-         ExitFailure i -> return $ Failed $ "Exit with " ++ (concat $ options)
+    case exitCode of
+         ExitSuccess -> return $ Succes "GShell is inited"
+         ExitFailure i -> return $ Failed $ "Exit with " ++ show i
 
-handleCommand :: MVar State -> Command -> IO Response
-handleCommand stateVar comm = join $ modifyMVar stateVar $ \state -> return $
+offGShell :: State -> IO Result
+offGShell state = do
+    let workFolder = state ^. workingFolder
+    let options = ["-uz", workFolder]
+    processHandle <- spawnProcess "fusermount" options
+    exitCode <- waitForProcess processHandle
+    case exitCode of
+         ExitSuccess -> return $ Succes "GShell is off"
+         ExitFailure i -> return $ Failed $ "Exit with " ++ show i
+
+run :: Command -> FilePath -> IO Result
+run comm path = do
+    existGShellFolder <- doesDirectoryExist $ rootDirectory path
+    existGShellState <- doesFileExist $ rootDirectory path </> ".state"
     case comm of
-      Init path -> (state & isOn .~ True & workingFolder .~ (gShellWorkingFolder path)
-                 , initGShell state path)
-
-port :: Int
-port = 9668
-
-emptyState :: State
-emptyState = State { _isOn = False, _revision = 0, _workingFolder = [] }
-
-runClientOnLocalhost :: (Serialize a, Serialize b) => a -> IO (Maybe b)
-runClientOnLocalhost comm = runClient "localhost" port comm
+        Init -> do
+                if existGShellState
+                then return $ Failed "Gshell is already inited"
+                else do
+                    workFolder <- ((</>) (rootDirectory path)) <$> generateWorkDirName
+                    let state = def { _isOn = True, _gShellDirectory = rootDirectory path, _isOff = False, _workingFolder = workFolder }
+                    let wp = state ^. gShellDirectory
+                    createDirectoryIfMissing True wp
+                    createDirectoryIfMissing True $ wp </> workFolder
+                    createDirectoryIfMissing True $ wp </> revisionInfix ++ (show $ state ^. revision)
+                    result <- initGShell state wp
+                    writeState state
+                    print $ result --TODO What to do with it
+                    return $ Folder workFolder
+        Off -> do
+               if existGShellState
+               then do
+                   state <- readGShellState path
+                   if state ^. isOff
+                   then
+                       return $ Failed "GShell is already off"
+                   else do
+                       result <- offGShell state
+                       writeState $ state & isOn .~ False & isOff .~ True
+                       return result
+               else return $ Failed "GShell is not inited"
+        Clean -> do
+            if existGShellFolder
+            then do
+                removeDirectoryRecursive $ rootDirectory path
+                return $ Succes "GSHell directory is clean"
+            else return $ Failed "Gshell is not inited"
 
 main :: IO ()
 main = do
-    stateVar <- newMVar emptyState
-    let options = def { daemonPort = port }
-    ensureDaemonRunning "gShell" options (handleCommand stateVar)
     args <- getArgs
+    path <- getCurrentDirectory
     let args' = map fromString args
     res <- case args' of
-      ["init", path]      -> runClientOnLocalhost $ Init path
-      _                   -> error "invalid command"
-    print (res :: Maybe Response)
+      ["init"]  -> run Init path
+      ["off"]   -> run Off path
+      ["clean"] -> run Clean path
+      _         -> error "invalid command"
+    case res of
+         Folder name -> print name
+         a@(Succes _) -> print a
+         b@(Failed _) -> print b
