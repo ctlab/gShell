@@ -1,1 +1,16 @@
 language: haskell
+
+ghc:
+    - 7.8
+
+
+before_install:
+    - |
+      bash <(curl -sS https://nixos.org/nix/install)
+      source $HOME/.nix-profile/etc/profile.d/nix.sh
+      nix-channel --update
+
+install:
+    - nix-shell -p '(haskellPackages.callPackage ./default.nix { })' --command 'exit 0'
+
+script: true

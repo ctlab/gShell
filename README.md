@@ -1,1 +1,1 @@
-[![Build Status](https://magnum.travis-ci.com/ctlab/gShell.svg?token=PEiqRSCGUNj8AWzxfxoE)](https://magnum.travis-ci.com/ctlab/gShell)
+[![Build Status](https://travis-ci.org/ctlab/gShell.svg)](https://travis-ci.org/ctlab/gShell)
