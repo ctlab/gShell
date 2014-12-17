@@ -17,4 +17,4 @@ cabal.config
 *.aux
 *.hp
 temp
-result/
+result
