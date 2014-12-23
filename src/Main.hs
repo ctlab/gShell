@@ -20,7 +20,6 @@ import           System.Process
 import           System.Random
 import System.IO.Unsafe
 
-import Debug.Trace
 
 data Command = Init
              | Off
