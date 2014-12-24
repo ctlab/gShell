@@ -16,9 +16,9 @@ import           System.Directory
 import           System.Environment    (getArgs)
 import           System.Exit
 import           System.FilePath
+import           System.IO.Unsafe
 import           System.Process
 import           System.Random
-import System.IO.Unsafe
 
 
 data Command = Init
@@ -98,7 +98,7 @@ getLastCommand = return "Commit MSG"
 
 findGshellRoot :: FilePath -> IO (Maybe FilePath)
 findGshellRoot "/" = return Nothing
-findGshellRoot path = do 
+findGshellRoot path = do
     doesExist <- doesDirectoryExist $ rootDirectory path
     if doesExist then return $ Just (unsafePerformIO $ canonicalizePath $ path) else findGshellRoot $ path </> ".."
 
@@ -189,7 +189,7 @@ run comm path = do
         Commit -> do -- Check if on
             (Just path') <- findGshellRoot path
             state <- readGShellState path'
-            if state ^. isOn 
+            if state ^. isOn
             then do
                 workFolder <- ((</>) (rootDirectory path')) <$> generateWorkDirName
                 result <- commit state workFolder
