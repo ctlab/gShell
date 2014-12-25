@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                gShell
-version:             0.0.0.0.0.0.1
+version:             0.0.0.0.0.1
 -- synopsis:            
 -- description:         
 homepage:            https://github.com/ctlab/gShell
