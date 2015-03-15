@@ -1,5 +1,6 @@
 { mkDerivation, base, bytestring, cereal, containers, data-default
-, directory, filepath, lens, process, random, stdenv, time, unix
+, directory, directory-tree, filepath, lens, process, random
+, stdenv, time, transformers, unix
 }:
 mkDerivation {
   pname = "gShell";
@@ -8,8 +9,8 @@ mkDerivation {
   isLibrary = false;
   isExecutable = true;
   buildDepends = [
-    base bytestring cereal containers data-default directory filepath
-    lens process random time unix
+    base bytestring cereal containers data-default directory
+    directory-tree filepath lens process random time transformers unix
   ];
   homepage = "https://github.com/ctlab/gShell";
   license = stdenv.lib.licenses.mit;
