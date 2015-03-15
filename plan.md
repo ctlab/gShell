@@ -2,17 +2,21 @@ Directory layout:
 
 rX = commitX/work
 
+```
 project-root/  
-  .gShell/
-    commit1/
-      work/ # raw files
-      changed files
-      message
-      what was read
-      ...
-    commit2/
-  work-id1 # unionfs mount r2/work:r1/work:r0/work
-  work-id2 # per open shell
+├── .gShell/
+│   └── commits/
+│       ├── commit1/
+│       │   ├─ work/ # raw files
+│       │   ├─ changed files/
+│       │   ├─ message
+│       │   ├─ what was read
+│       │   └─ ...
+│       └── commit2/
+├── work-id1 # unionfs mount r2/work:r1/work:r0/work
+├── work-id2 # per open shell
+└── ...
+```
 
 ## Workflows
 
