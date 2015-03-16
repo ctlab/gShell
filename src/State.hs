@@ -6,9 +6,9 @@ import           Folders
 
 import           Control.Lens
 import           Data.Default
-import           System.IO.Error
-import           System.Directory.Tree     as DT
 import           System.Directory
+import           System.Directory.Tree as DT
+import           System.IO.Error
 
 data Commit = Commit { _number       :: Int
                      , _work         :: DirTree FilePath

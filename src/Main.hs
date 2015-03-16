@@ -14,8 +14,9 @@ main :: IO ()
 main = do
     args <- getArgs
     let [command, path'] = map fromString args
-    path <- canonicalizePath path'
+    path <- createDirectoryIfMissing True path' >> canonicalizePath path'
     res <- case command of
       "init"  -> run Init path
+      "enter"  -> run Enter path
       _       -> error "invalid command"
     print res
