@@ -34,7 +34,7 @@ initGShell path =
                     ]
                 ]
             ]
-        return $ Succes $ wf path ++ hash
+        return $ Succes path
 
 enterGshell :: FilePath -> StateT GlobalState IO Result
 enterGshell path = return $ Succes "Enter"
