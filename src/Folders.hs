@@ -19,9 +19,17 @@ wf path = path </> workFolderName
 
 generateHash :: IO FilePath
 generateHash = do
-    g <- getStdGen
+    g <- newStdGen
     time <- show <$> getPOSIXTime
     let a = take 5 $ (randomRs ('a', 'z') g)
     let b = take 5 $ (randomRs ('0', '9') g)
     let hash = concat $ zipWith (\a b -> a:[b]) a b
     return $ "-" ++ time ++ "-" ++ hash
+
+generateId :: IO FilePath
+generateId = do
+    g <- newStdGen
+    let c = (randomRs ('0', '9') g)
+    let a = take 2 $ c
+    let b = take 2 $ drop 2 c
+    return $ a ++ b
