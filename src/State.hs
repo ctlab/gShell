@@ -13,7 +13,7 @@ module State ( GState (..)
              , viewGshellRoot
              , viewCommitsRoot
              , generateState
-) where
+             ) where
 
 import           Folders
 
