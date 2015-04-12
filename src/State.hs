@@ -21,6 +21,7 @@ import           Control.Applicative
 import           Control.Lens
 import           Data.Default
 import           Data.Text
+import qualified Data.Text.IO          as T
 import           System.Directory
 import           System.Directory.Tree
 import           System.IO.Error
@@ -70,6 +71,4 @@ viewCommitsRoot :: GState -> [GDir]
 viewCommitsRoot = view commitsRoot
 
 generateState :: FilePath -> IO GState
-generateState path = do
-    a <- readDirectory path
-    return $ fmap pack a
+generateState = readDirectoryWithL T.readFile
