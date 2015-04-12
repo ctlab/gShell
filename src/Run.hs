@@ -2,29 +2,27 @@ module Run ( Command(..)
            , Result(..)
            , initGShell
            , enterGshell
+           , clearGshell
            , run
            ) where
-import           Control.Applicative
+
+import           Folders
+import           State
+
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.State
 
-import           Data.Text                 (Text)
-import qualified Data.Text.IO              as T
 import           System.Directory
 import           System.Directory.Tree
 import           System.FilePath
-
-import           Control.Arrow
-import           Data.Default
-import           Folders
-import           State
 
 import           Debug
 
 data Command = Init
              | Enter
+             | Clear
              deriving ( Show )
 
 data Result = Fail String
@@ -33,31 +31,39 @@ data Result = Fail String
 
 initGShell :: FilePath -> StateT GState IO Result
 initGShell path = do
-    currentgshellRoot <- use gshellRoot
-    if (not $ null $ currentgshellRoot)
-    then return $ Fail "gshell root alredy exists"
-        -- printDebug "Removing current gshell root" >> removeDirectoryRecursive (gf path)
-    else do
-        hash <- lift generateHash
-        projectRoot .= initStructure hash
-        return $ Success path
-        where initStructure hash = [
-                Dir gshellFolderName [
-                    Dir commitsFolderName [
-                        Dir (revFolderName ++ hash) [] ] ] ]
+    hash <- lift generateHash
+    projectRoot .= initStructure hash
+    return $ Success path
+    where initStructure hash = [
+            Dir gshellFolderName [
+                Dir commitsFolderName [
+                    Dir (revFolderName ++ hash) [] ] ] ]
 
 enterGshell :: FilePath -> StateT GState IO Result
-enterGshell path = return $ Success "Enter"
-            --- ,   Dir (workFolderName ++ hash) [] we need this in enter function
+enterGshell path = do
+    userId <- lift generateId
+    projectRoot %= (++ initWork userId) --TODO create addState* functions?
+    return $ Success $ (wf path) ++ userId
+    where initWork userId = [
+            Dir (workFolderName ++ userId) [] ]
 
+clearGshell :: FilePath -> StateT GState IO Result
+clearGshell path = do
+    lift $ removeDirectoryRecursive $ gf path
+    return $ Success "Clear"
 
 run :: Command -> FilePath -> IO Result
 run command path = do
     state <- generateState path
+    let existGshellRoot = not $ null $ state ^. gshellRoot
     (result, newState) <- case command of
-        Init -> runStateT (initGShell path) state
-        Enter -> runStateT (enterGshell path) state -- check if path and .gshell are presented
-    {-print newState-}
-    writeDirectoryWith T.writeFile newState
+        Init  | not existGshellRoot -> runStateT (initGShell path) state
+        Init  | existGshellRoot     -> return (Fail "gshell is already inited", state)
+        Enter | existGshellRoot     -> runStateT (enterGshell path) state
+        Enter | not existGshellRoot -> return (Fail "gshell is not inited", state)
+        Clear | existGshellRoot -> runStateT (clearGshell path) state
+        Clear | not existGshellRoot -> return (Fail "gshell is not inited", state)
+    printDebug newState
+    writeDirectory newState
     return result
 
