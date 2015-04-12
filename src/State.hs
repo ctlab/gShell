@@ -1,59 +1,75 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
-module State where
+module State ( GState (..)
+             , GDir (..)
+             , projectRoot
+             , gshellRoot
+             , commitsRoot
+             , addToProject
+             , addToGshell
+             , addToCommits
+             , viewProjectRoot
+             , viewGshellRoot
+             , viewCommitsRoot
+             , generateState
+) where
 
 import           Folders
 
+import           Control.Applicative
 import           Control.Lens
 import           Data.Default
+import           Data.Text
 import           System.Directory
-import           System.Directory.Tree as DT
+import           System.Directory.Tree
 import           System.IO.Error
 
-data Commit = Commit { _number       :: Int
-                     , _work         :: DirTree FilePath
-                     , _changedFiles :: FilePath
-                     , _message      :: String
-                     } deriving (Show)
-makeLenses ''Commit
+type GState = AnchoredDirTree Text
+type GDir = DirTree Text
 
-instance Default Commit where
-    def = Commit { _number = undefined
-                 , _work = undefined
-                 , _changedFiles = []
-                 , _message = undefined
-                 }
+addToFolder :: Setting (->) s t [a] [a] -> [a] -> s -> t
+addToFolder lens what = over lens (++ what)
 
-data GshellState = GshellState { _isOn    :: Bool
-                               , _commits :: [Commit]
-                               } deriving (Show)
-makeLenses ''GshellState
+filteredByName
+  :: (Choice p, Applicative f) =>
+     FileName -> Optic' p f (GDir) (GDir)
+filteredByName name = filtered ((== name) . (^. _name))
 
-instance Default GshellState where
-    def = GshellState { _isOn = False
-                      , _commits = def
-                      }
+projectRoot :: Control.Applicative.Applicative f =>
+     ([GDir] -> f [GDir])
+     -> GState -> f (GState)
+projectRoot = _dirTree._contents
 
-data GlobalState = GlobalState { _gShellState    :: GshellState
-                               , _workingFolders :: [DirTree FilePath]
-                               , _rootFolder     :: FilePath
-                               } deriving (Show)
-makeLenses ''GlobalState
+addToProject :: [GDir] -> GState -> GState
+addToProject = addToFolder projectRoot
 
-instance Default GlobalState where
-    def = GlobalState { _gShellState = def
-                      , _workingFolders = []
-                      , _rootFolder = undefined
-                      }
+viewProjectRoot :: GState -> [GDir]
+viewProjectRoot = view projectRoot
 
-generateState :: FilePath -> IO GlobalState
+gshellRoot :: Control.Applicative.Applicative f =>
+     ([GDir] -> f [GDir])
+     -> GState -> f (GState)
+gshellRoot = projectRoot.traverse.filteredByName gshellFolderName._contents
+
+addToGshell :: [GDir] -> GState -> GState
+addToGshell = addToFolder gshellRoot
+
+viewGshellRoot :: GState -> [GDir]
+viewGshellRoot = view gshellRoot
+
+commitsRoot :: Control.Applicative.Applicative f =>
+     ([GDir] -> f [GDir])
+     -> GState -> f (GState)
+commitsRoot = gshellRoot.traverse.filteredByName commitsFolderName._contents
+
+addToCommits :: [GDir] -> GState -> GState
+addToCommits = addToFolder commitsRoot
+
+viewCommitsRoot :: GState -> [GDir]
+viewCommitsRoot = view commitsRoot
+
+generateState :: FilePath -> IO GState
 generateState path = do
-    createDirectoryIfMissing True $ gf path
-    myTree <- build $ gf path
-    print (dirTree myTree)
-    let commits = maybe (gf path :/ DT.Failed commitsFolderName (userError $ "No " ++ commitsFolderName ++ " folder")) (id) (dropTo commitsFolderName myTree)
-        state = gShellState.isOn .~ True
-                $ rootFolder .~ path
-                $ def
-    print commits
-    return $ state
+    a <- readDirectory path
+    return $ fmap pack a
