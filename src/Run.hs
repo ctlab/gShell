@@ -13,7 +13,6 @@ import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.State
-import           Data.Either
 
 import           System.Directory
 import           System.Directory.Tree
@@ -26,8 +25,7 @@ import           Debug
 data Command = Init
              | Enter
              | Clear
-             | Commit String
-             deriving ( Show )
+             | Commit String deriving ( Show )
 
 writeStateToDisk :: StateT (GState) IO (AnchoredDirTree ())
 writeStateToDisk = get >>= lift . writeDirectory
@@ -54,11 +52,9 @@ enterGshell path = do
 
 clearGshell :: FilePath -> StateT GState IO Result
 clearGshell path = do
-    result <- gets  (^.. workFolders._name) >>= lift . mapM (unmountWorkspace path)
+    result <- get >>= lift . unmountWorkspaces
     lift $ removeDirectoryRecursive $ gf path
-    if (null $ result ^..below _Right)
-       then return $ Left $ concat $ intersperse ", " $ lefts result
-       else return $ Right $ concat $ intersperse ", " $ rights result
+    return result
 
 
 commitGshell :: String -> FilePath -> StateT GState IO Result

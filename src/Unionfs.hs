@@ -1,5 +1,6 @@
 module Unionfs ( unmountWorkspace
                , createWorkspace
+               , unmountWorkspaces
                ) where
 
 import           Debug
@@ -15,6 +16,7 @@ import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Either
 import           Control.Monad.Trans.State
 import           System.Unix.Mount
+import           Data.Either
 
 import           System.Directory.Tree
 import           System.FilePath.Posix
@@ -32,6 +34,14 @@ fuserumount = "fusermount"
 
 fuuoptions :: [String]
 fuuoptions = ["-uz"]
+
+unmountWorkspaces :: GState -> IO Result
+unmountWorkspaces state = do
+    let path = projectPath state
+    result <- mapM (unmountWorkspace path) $ state ^.. workFolders._name
+    if (null $ result ^..below _Right)
+       then return $ Left $ concat $ intersperse ", " $ lefts result
+       else return $ Right $ concat $ intersperse ", " $ rights result
 
 unmountWorkspace :: FilePath -> FilePath -> IO Result
 unmountWorkspace path folder = runEitherT $ do
