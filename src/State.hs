@@ -3,6 +3,8 @@
 
 module State ( GState (..)
              , GDir (..)
+             , Result (..)
+             , projectPath
              , projectRoot
              , gshellRoot
              , commitsRoot
@@ -19,9 +21,15 @@ import           Control.Applicative
 import           Control.Lens
 import           System.Directory
 import           System.Directory.Tree
+import           System.FilePath.Posix
 
-type GState = AnchoredDirTree FilePath
-type GDir = DirTree FilePath
+type GState = AnchoredDirTree String
+type GDir = DirTree String
+
+type Result = Either String String
+
+projectPath :: GState -> FilePath
+projectPath state = state ^. _anchor </> state ^. _dirTree._name
 
 filteredByName
   :: (Choice p, Applicative f) =>
@@ -53,8 +61,9 @@ viewCommitsRoot :: GState -> [GDir]
 viewCommitsRoot = view commitsRoot
 
 workFolders :: Applicative f =>
-         (GDir -> f (GDir)) -> GState -> f GState
+         (GDir -> f (GDir))
+         -> GState -> f GState
 workFolders = projectRoot.traverse.filtered ((== workFolderName) . (Prelude.take (Prelude.length workFolderName)) . (^. _name))
 
 generateState :: FilePath -> IO GState
-generateState = build
+generateState = readDirectory
