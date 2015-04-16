@@ -1,6 +1,6 @@
 { mkDerivation, base, bytestring, cereal, containers, data-default
 , directory, directory-tree, filepath, lens, process, random
-, stdenv, time, transformers, unix, either
+, stdenv, time, transformers, unix, either, Unixutils
 }:
 mkDerivation {
   pname = "gShell";
