@@ -12,8 +12,8 @@ import           System.Environment (getArgs)
 
 main :: IO ()
 main = do
-    args <- getArgs
-    let args = map fromString args
+    args' <- getArgs
+    let args = map fromString args'
         [command, path'] = take 2 args
     path <- createDirectoryIfMissing True path' >> canonicalizePath path'
     res <- case command of
