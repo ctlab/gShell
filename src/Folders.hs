@@ -1,4 +1,16 @@
-module Folders where
+module Folders ( gshellFolderName
+               , gf
+               , commitsFolderName
+               , cf
+               , revFolderName
+               , rf
+               , mountFolderName
+               , mf
+               , workFolderName
+               , wf
+               , generateHash
+               , generateId
+               ) where
 
 import           Control.Applicative
 import           Data.Time.Clock.POSIX
@@ -13,6 +25,9 @@ cf path = path </> gshellFolderName </> commitsFolderName
 
 revFolderName = "rev"
 rf path = path </> gshellFolderName </> commitsFolderName </> revFolderName
+
+mountFolderName = "toMount"
+mf path revName = path </> gshellFolderName </> commitsFolderName </> revName </> mountFolderName
 
 workFolderName = "work-id"
 wf path = path </> workFolderName

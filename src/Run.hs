@@ -30,16 +30,23 @@ data Command = Init
 writeStateToDisk :: StateT (GState) IO (AnchoredDirTree ())
 writeStateToDisk = get >>= lift . writeDirectory
 
+createCommitFolder :: StateT GState IO ()
+createCommitFolder = do
+    hash <- lift generateHash
+    commitsRoot %= (++ initCommit hash)
+    where initCommit hash = [
+            Dir (revFolderName ++ hash) [
+                Dir mountFolderName [] ] ]
+
 initGShell :: FilePath -> StateT GState IO Result
 initGShell path = do
-    hash <- lift generateHash
-    projectRoot .= initStructure hash
+    projectRoot .= initStructure
+    createCommitFolder
     writeStateToDisk
     return $ Right path
-    where initStructure hash = [
+    where initStructure = [
             Dir gshellFolderName [
-                Dir commitsFolderName [
-                    Dir (revFolderName ++ hash) [] ] ] ]
+                Dir commitsFolderName [] ] ]
 
 enterGshell :: FilePath -> StateT GState IO Result
 enterGshell path = do
@@ -56,12 +63,18 @@ clearGshell path = do
     lift $ removeDirectoryRecursive $ gf path
     return result
 
-
 commitGshell :: String -> FilePath -> StateT GState IO Result
-commitGshell = commitGshell
+commitGshell message currentWork = do
+    --TODO need to go up until we find .gshell :(
+    lift $ unmountWorkspace currentWork 
+    createCommitFolder
+    --TODO where do we have to write message?
+    writeStateToDisk
+    get >>= lift . createWorkspace (currentWork) >>= return
 
 run :: Command -> FilePath -> IO Result
-run command path = do
+run command path' = do
+    let (path, currentWork) = fixPath path'
     state <- generateState path
     let existGshellRoot = not $ null $ state ^. gshellRoot
     (result, newState) <- case command of
@@ -71,8 +84,9 @@ run command path = do
         Enter | not existGshellRoot -> return (Left "gshell is not inited", state)
         Clear | existGshellRoot     -> runStateT (clearGshell path) state
         Clear | not existGshellRoot -> return (Left "gshell is not inited", state)
-        (Commit message) | existGshellRoot -> runStateT (commitGshell message path) state
+        (Commit message) | existGshellRoot -> runStateT (commitGshell message currentWork) state
         (Commit _) | not existGshellRoot -> return (Left "gshell is not inited", state)
-    {-printDebug newState-}
     return result
+    where fixPath path = if ((take (length workFolderName) $ takeFileName path) == workFolderName) then (takeDirectory path, path) else (path, path) --TODO maybe find .gshell here?
+
 

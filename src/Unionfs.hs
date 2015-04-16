@@ -35,16 +35,26 @@ fuserumount = "fusermount"
 fuuoptions :: [String]
 fuuoptions = ["-uz"]
 
+runWithExitCodeMessage :: FilePath -> [String] -> IO Result
+runWithExitCodeMessage proc options = do
+    printDebug proc
+    printDebug options
+    processHandle <- spawnProcess proc options
+    exitCode <- waitForProcess processHandle
+    case exitCode of
+         ExitSuccess -> return $ Right $ show proc ++ " " ++ (last options)
+         ExitFailure i -> return $ Left $ show proc ++ " exit code: " ++ show i
+
 unmountWorkspaces :: GState -> IO Result
 unmountWorkspaces state = do
     let path = projectPath state
-    result <- mapM (unmountWorkspace path) $ state ^.. workFolders._name
+    result <- mapM (unmountWorkspace . (path </>)) $ state ^.. workFolders._name
     if (null $ result ^..below _Right)
        then return $ Left $ concat $ intersperse ", " $ lefts result
        else return $ Right $ concat $ intersperse ", " $ rights result
 
-unmountWorkspace :: FilePath -> FilePath -> IO Result
-unmountWorkspace path folder = runEitherT $ do
+unmountWorkspace :: FilePath -> IO Result
+unmountWorkspace toUmount = runEitherT $ do
     mounted <- lift $ isMountPoint toUmount
     result <- if mounted
         then lift $ unmountWorkspace' $ toUmount
@@ -52,29 +62,17 @@ unmountWorkspace path folder = runEitherT $ do
     case result of
         Right b -> return b
         Left b -> left b
-    where
-        toUmount = path </> folder
 
 unmountWorkspace' :: FilePath -> IO Result
 unmountWorkspace' workspace = do
     let options = fuuoptions ++ [workspace]
-    printDebug options
     runWithExitCodeMessage fuserumount options
 
 createWorkspace :: FilePath -> GState -> IO Result
 createWorkspace workingFolder state = do
     let folders = state ^.. commitsRoot.traverse._name
         rootFolder = projectPath state
-    printDebug folders
     createWorkspace' rootFolder folders workingFolder
-
-runWithExitCodeMessage :: FilePath -> [String] -> IO Result
-runWithExitCodeMessage proc options = do
-    processHandle <- spawnProcess proc options
-    exitCode <- waitForProcess processHandle
-    case exitCode of
-         ExitSuccess -> return $ Right $ show proc ++ " " ++ (last options)
-         ExitFailure i -> return $ Left $ show proc ++ " exit code: " ++ show i
 
 makeFolders :: [FilePath] -> [String]
 makeFolders folders = [intercalate ":" $ head' ++ tail']
@@ -84,6 +82,6 @@ makeFolders folders = [intercalate ":" $ head' ++ tail']
 
 createWorkspace' :: FilePath -> [FilePath] -> FilePath -> IO Result
 createWorkspace' rootFolder folders workspace = do
-    let folders' = makeFolders $ map (cf rootFolder </> ) folders
+    let folders' = makeFolders $ map (flip (</>) mountFolderName . (cf rootFolder </>)) folders
     let options = ufoptions ++ folders' ++ [workspace]
     runWithExitCodeMessage unionfs options
