@@ -13,6 +13,7 @@ module State ( GState (..)
              , viewGshellRoot
              , viewCommitsRoot
              , generateState
+             , shrinkToGshellOnly
              ) where
 
 import           Folders
@@ -22,6 +23,8 @@ import           Control.Lens
 import           System.Directory
 import           System.Directory.Tree
 import           System.FilePath.Posix
+
+import           Data.List
 
 type GState = AnchoredDirTree String
 type GDir = DirTree String
@@ -67,3 +70,6 @@ workFolders = projectRoot.traverse.filtered ((== workFolderName) . (Prelude.take
 
 generateState :: FilePath -> IO GState
 generateState = readDirectory
+
+shrinkToGshellOnly :: GState -> GState
+shrinkToGshellOnly state = state & projectRoot .~ (state ^. projectRoot) \\ (state ^.. workFolders)

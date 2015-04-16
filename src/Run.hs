@@ -66,15 +66,17 @@ clearGshell path = do
 commitGshell :: String -> FilePath -> StateT GState IO Result
 commitGshell message currentWork = do
     --TODO need to go up until we find .gshell :(
+    modify shrinkToGshellOnly
     lift $ unmountWorkspace currentWork 
-    createCommitFolder
     --TODO where do we have to write message?
+    createCommitFolder
     writeStateToDisk
     get >>= lift . createWorkspace (currentWork) >>= return
 
 run :: Command -> FilePath -> IO Result
 run command path' = do
     let (path, currentWork) = fixPath path'
+    printDebug path
     state <- generateState path
     let existGshellRoot = not $ null $ state ^. gshellRoot
     (result, newState) <- case command of
