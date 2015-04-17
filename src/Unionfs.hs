@@ -78,7 +78,7 @@ makeFolders :: [FilePath] -> [String]
 makeFolders folders = [intercalate ":" $ head' ++ tail']
     where
         head' = [last folders ++ "=RW"]
-        tail' = zipWith (\folder _ -> folder ++ "=RO") folders [1..(length folders) - 1]
+        tail' = zipWith (\folder _ -> folder ++ "=RO") (reverse $ init folders) [1..]
 
 createWorkspace' :: FilePath -> [FilePath] -> FilePath -> IO Result
 createWorkspace' rootFolder folders workspace = do
