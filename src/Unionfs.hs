@@ -4,7 +4,7 @@ module Unionfs ( unmountWorkspace
                ) where
 
 import           Debug
-import           Folders
+import           Names
 import           State
 
 import           System.Exit
@@ -15,8 +15,8 @@ import           Control.Monad
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Either
 import           Control.Monad.Trans.State
-import           System.Unix.Mount
 import           Data.Either
+import           System.Unix.Mount
 
 import           System.Directory.Tree
 import           System.FilePath.Posix
@@ -48,7 +48,7 @@ runWithExitCodeMessage proc options = do
 unmountWorkspaces :: GState -> IO Result
 unmountWorkspaces state = do
     let path = projectPath state
-    result <- mapM (unmountWorkspace . (path </>)) $ state ^.. workFolders._name
+    result <- mapM (unmountWorkspace . (path </>)) $ state ^.. workDirs._name
     if (null $ result ^..below _Right)
        then return $ Left $ concat $ intersperse ", " $ lefts result
        else return $ Right $ concat $ intersperse ", " $ rights result
@@ -69,19 +69,19 @@ unmountWorkspace' workspace = do
     runWithExitCodeMessage fuserumount options
 
 createWorkspace :: FilePath -> GState -> IO Result
-createWorkspace workingFolder state = do
+createWorkspace workingDir state = do
     let folders = state ^.. commitsRoot.traverse._name
-        rootFolder = projectPath state
-    createWorkspace' rootFolder folders workingFolder
+        rootDir = projectPath state
+    createWorkspace' rootDir folders workingDir
 
-makeFolders :: [FilePath] -> [String]
-makeFolders folders = [intercalate ":" $ head' ++ tail']
+makeDirs :: [FilePath] -> [String]
+makeDirs folders = [intercalate ":" $ head' ++ tail']
     where
         head' = [last folders ++ "=RW"]
         tail' = map (++ "=RO") (reverse $ init folders)
 
 createWorkspace' :: FilePath -> [FilePath] -> FilePath -> IO Result
-createWorkspace' rootFolder folders workspace = do
-    let folders' = makeFolders $ map (flip (</>) mountFolderName . (cf rootFolder </>)) folders
+createWorkspace' rootDir folders workspace = do
+    let folders' = makeDirs $ map (flip (</>) mountDirName . (commitsDir rootDir </>)) folders
     let options = ufoptions ++ folders' ++ [workspace]
     runWithExitCodeMessage unionfs options

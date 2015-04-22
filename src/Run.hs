@@ -5,9 +5,11 @@ module Run ( Command(..)
            , run
            ) where
 
-import           Folders
+import           Names
 import           State
 import           Unionfs
+
+import           Debug
 
 import           Control.Lens
 import           Control.Monad
@@ -20,8 +22,6 @@ import           System.FilePath
 
 import           Data.List
 
-import           Debug
-
 data Command = Init
              | Enter
              | Clear
@@ -30,46 +30,48 @@ data Command = Init
 writeStateToDisk :: StateT (GState) IO (AnchoredDirTree ())
 writeStateToDisk = get >>= lift . writeDirectory
 
-createCommitFolder :: StateT GState IO ()
-createCommitFolder = do
+createCommitDir :: StateT GState IO ()
+createCommitDir = do
     hash <- lift generateHash
     commitsRoot %= (++ initCommit hash)
     where initCommit hash = [
-            Dir (revFolderName ++ hash) [
-                Dir mountFolderName [] ] ]
+            Dir (revDirName ++ hash) [
+                Dir mountDirName [] ] ]
 
 initGShell :: FilePath -> StateT GState IO Result
 initGShell path = do
     projectRoot .= initStructure
-    createCommitFolder
+    createCommitDir
     writeStateToDisk
     return $ Right path
     where initStructure = [
-            Dir gshellFolderName [
-                Dir commitsFolderName [] ] ]
+            Dir gshellDirName [
+                Dir commitsDirName [] ] ]
 
 enterGshell :: FilePath -> StateT GState IO Result
 enterGshell path = do
     userId <- lift generateId
-    projectRoot %= (++ initWork userId) --TODO create addState* functions?
+    let workName = initWork userId
+    projectRoot %= (++ workName) --TODO create addState* functions?
+    gshellRoot %= (++ workName) --TODO create addState* functions?
     writeStateToDisk
-    get >>= lift . createWorkspace ((wf path) ++ userId) >>= return
+    get >>= lift . createWorkspace ((workDir path) ++ userId) >>= return
     where initWork userId = [
-            Dir (workFolderName ++ userId) [] ]
+            Dir (workDirName ++ userId) [] ]
 
 clearGshell :: FilePath -> StateT GState IO Result
 clearGshell path = do
     result <- get >>= lift . unmountWorkspaces
-    lift $ removeDirectoryRecursive $ gf path
+    lift $ removeDirectoryRecursive $ gshellDir path
     return result
 
 commitGshell :: String -> FilePath -> StateT GState IO Result
 commitGshell message currentWork = do
     --TODO need to go up until we find .gshell :(
     modify shrinkToGshellOnly
-    lift $ unmountWorkspace currentWork 
+    lift $ unmountWorkspace currentWork
     --TODO where do we have to write message?
-    createCommitFolder
+    createCommitDir
     writeStateToDisk
     get >>= lift . createWorkspace (currentWork) >>= return
 
@@ -89,6 +91,6 @@ run command path' = do
         (Commit message) | existGshellRoot -> runStateT (commitGshell message currentWork) state
         (Commit _) | not existGshellRoot -> return (Left "gshell is not inited", state)
     return result
-    where fixPath path = if ((take (length workFolderName) $ takeFileName path) == workFolderName) then (takeDirectory path, path) else (path, path) --TODO maybe find .gshell here?
+    where fixPath path = if ((take (length workDirName) $ takeFileName path) == workDirName) then (takeDirectory path, path) else (path, path) --TODO maybe find .gshell here?
 
 

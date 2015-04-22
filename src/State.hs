@@ -8,7 +8,7 @@ module State ( GState (..)
              , projectRoot
              , gshellRoot
              , commitsRoot
-             , workFolders
+             , workDirs
              , viewProjectRoot
              , viewGshellRoot
              , viewCommitsRoot
@@ -16,7 +16,7 @@ module State ( GState (..)
              , shrinkToGshellOnly
              ) where
 
-import           Folders
+import           Names
 
 import           Control.Applicative
 import           Control.Lens
@@ -50,7 +50,7 @@ viewProjectRoot = view projectRoot
 gshellRoot :: Control.Applicative.Applicative f =>
      ([GDir] -> f [GDir])
      -> GState -> f (GState)
-gshellRoot = projectRoot.traverse.filteredByName gshellFolderName._contents
+gshellRoot = projectRoot.traverse.filteredByName gshellDirName._contents
 
 viewGshellRoot :: GState -> [GDir]
 viewGshellRoot = view gshellRoot
@@ -58,18 +58,18 @@ viewGshellRoot = view gshellRoot
 commitsRoot :: Control.Applicative.Applicative f =>
      ([GDir] -> f [GDir])
      -> GState -> f (GState)
-commitsRoot = gshellRoot.traverse.filteredByName commitsFolderName._contents
+commitsRoot = gshellRoot.traverse.filteredByName commitsDirName._contents
 
 viewCommitsRoot :: GState -> [GDir]
 viewCommitsRoot = view commitsRoot
 
-workFolders :: Applicative f =>
+workDirs :: Applicative f =>
          (GDir -> f (GDir))
          -> GState -> f GState
-workFolders = projectRoot.traverse.filtered ((== workFolderName) . (Prelude.take (Prelude.length workFolderName)) . (^. _name))
+workDirs = projectRoot.traverse.filtered ((== workDirName) . (Prelude.take (Prelude.length workDirName)) . (^. _name))
 
 generateState :: FilePath -> IO GState
 generateState = readDirectory
 
 shrinkToGshellOnly :: GState -> GState
-shrinkToGshellOnly state = state & projectRoot .~ (state ^. projectRoot) \\ (state ^.. workFolders)
+shrinkToGshellOnly state = state & projectRoot .~ (state ^. projectRoot) \\ (state ^.. workDirs)
