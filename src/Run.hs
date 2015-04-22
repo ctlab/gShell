@@ -75,9 +75,16 @@ commitGshell message currentWork = do
     writeStateToDisk
     get >>= lift . createWorkspace (currentWork) >>= return
 
+-- return project root and current work directory
+findProjectRoot :: FilePath -> (FilePath, FilePath)
+findProjectRoot "/" = error "No project, no work"
+findProjectRoot path | (take (length workDirName) $ takeFileName path) == workDirName = (takeDirectory path, path)
+findProjectRoot path | isInfixOf workDirName path = findProjectRoot $ takeDirectory path
+findProjectRoot path = (path, path) --TODO bad bad bad idea
+
 run :: Command -> FilePath -> IO Result
 run command path' = do
-    let (path, currentWork) = fixPath path'
+    let (path, currentWork) = findProjectRoot path'
     printDebug path
     state <- generateState path
     let existGshellRoot = not $ null $ state ^. gshellRoot
@@ -91,6 +98,5 @@ run command path' = do
         (Commit message) | existGshellRoot -> runStateT (commitGshell message currentWork) state
         (Commit _) | not existGshellRoot -> return (Left "gshell is not inited", state)
     return result
-    where fixPath path = if ((take (length workDirName) $ takeFileName path) == workDirName) then (takeDirectory path, path) else (path, path) --TODO maybe find .gshell here?
 
 
