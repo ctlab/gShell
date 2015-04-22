@@ -15,9 +15,10 @@ main = do
         [command, path'] = take 2 args
     path <- createDirectoryIfMissing True path' >> canonicalizePath path'
     res <- case command of
-      "init"  -> run Init path
+      "init"   -> run Init path
       "enter"  -> run Enter path
       "clear"  -> run Clear path
-      "commit"  -> run (Commit $ args !! 2) path
-      _       -> error "invalid command"
+      "commit" -> run (Commit $ args !! 2) path
+      "log"    -> run Log path
+      _        -> error "invalid command"
     print res

@@ -10,8 +10,11 @@ module Names ( gshellDirName
              , mountDir
              , workDirName
              , workDir
+             , workHelperFileName
+             , workHelperFile
              , generateHash
              , generateId
+             , gshellInited
              ) where
 
 import           Control.Applicative
@@ -37,6 +40,9 @@ mountDir path revName = path </> gshellDirName </> commitsDirName </> revName </
 workDirName = "work-id"
 workDir path = path </> workDirName
 
+workHelperFileName = "work-information"
+workHelperFile path workId = path </> gshellDirName </> (workDirName ++ workId) </> workHelperFileName
+
 generateHash :: IO FilePath
 generateHash = do
     g <- newStdGen
@@ -53,3 +59,6 @@ generateId = do
     let a = take 2 $ c
     let b = take 2 $ drop 2 c
     return $ a ++ b
+
+gshellInited :: Bool -> String
+gshellInited a = "gshell is " ++ (if a then "already" else "not") ++ " inited"

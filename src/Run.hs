@@ -1,5 +1,5 @@
 module Run ( Command(..)
-           , initGShell
+           , initGshell
            , enterGshell
            , clearGshell
            , run
@@ -25,25 +25,28 @@ import           Data.List
 data Command = Init
              | Enter
              | Clear
-             | Commit String deriving ( Show )
+             | Commit String
+             | Log deriving ( Show )
 
 writeStateToDisk :: StateT (GState) IO (AnchoredDirTree ())
 writeStateToDisk = get >>= lift . writeDirectory
 
-createCommitDir :: StateT GState IO ()
+createCommitDir :: StateT GState IO FilePath
 createCommitDir = do
     hash <- lift generateHash
-    commitsRoot %= (++ initCommit hash)
-    where initCommit hash = [
-            Dir (revDirName ++ hash) [
+    let revName = revDirName ++ hash
+    commitsRoot %= (++ initCommit revName)
+    return revName 
+    where initCommit revName = [
+            Dir revName [
                 Dir mountDirName [] ] ]
 
-initGShell :: FilePath -> StateT GState IO Result
-initGShell path = do
+initGshell :: FilePath -> StateT GState IO Result
+initGshell path = do
     projectRoot .= initStructure
     createCommitDir
     writeStateToDisk
-    return $ Right path
+    return $ Right [path]
     where initStructure = [
             Dir gshellDirName [
                 Dir commitsDirName [] ] ]
@@ -51,13 +54,17 @@ initGShell path = do
 enterGshell :: FilePath -> StateT GState IO Result
 enterGshell path = do
     userId <- lift generateId
-    let workName = initWork userId
-    projectRoot %= (++ workName) --TODO create addState* functions?
-    gshellRoot %= (++ workName) --TODO create addState* functions?
+    folders <- gets $ flip (^..) (commitsRoot.traverse._name)
+    let workState = WorkingState folders
+    projectRoot %= (++ initWork userId) --TODO create addState* functions?
+    gshellRoot %= (++ initWorkHelper userId workState)
     writeStateToDisk
-    get >>= lift . createWorkspace ((workDir path) ++ userId) >>= return
+    get >>= lift . createWorkspace ((workDir path) ++ userId) folders >>= return
     where initWork userId = [
             Dir (workDirName ++ userId) [] ]
+          initWorkHelper userId workState = [
+            Dir (workDirName ++ userId) [
+                File workHelperFileName (show workState) ] ]
 
 clearGshell :: FilePath -> StateT GState IO Result
 clearGshell path = do
@@ -65,15 +72,27 @@ clearGshell path = do
     lift $ removeDirectoryRecursive $ gshellDir path
     return result
 
+writeCommitMessage :: String -> FilePath -> StateT GState IO ()
+writeCommitMessage message revFolder = do
+    revisionRoot revFolder %= (++ [File commitFileName message])
+
 commitGshell :: String -> FilePath -> StateT GState IO Result
 commitGshell message currentWork = do
-    --TODO need to go up until we find .gshell :(
     modify shrinkToGshellOnly
+    let workName = takeFileName currentWork
     lift $ unmountWorkspace currentWork
-    --TODO where do we have to write message?
-    createCommitDir
+    workState <- gets $ read . view (workingState workName)
+    writeCommitMessage message $ last $ workState ^. revisions
+    revName <- createCommitDir
+    let workState' = workState & revisions %~ (++ [revName])
+    workingState workName .= show workState'
     writeStateToDisk
-    get >>= lift . createWorkspace (currentWork) >>= return
+    get >>= lift . createWorkspace (currentWork) (workState' ^. revisions) >>= return
+
+logGshell :: FilePath -> StateT GState IO Result
+logGshell path = do
+    history <- gets $ toListOf commitsContents
+    return $ Right history
 
 -- return project root and current work directory
 findProjectRoot :: FilePath -> (FilePath, FilePath)
@@ -89,14 +108,14 @@ run command path' = do
     state <- generateState path
     let existGshellRoot = not $ null $ state ^. gshellRoot
     (result, newState) <- case command of
-        Init  | not existGshellRoot -> runStateT (initGShell path) state
-        Init  | existGshellRoot     -> return (Left "gshell is already inited", state)
+        Init  | not existGshellRoot -> runStateT (initGshell path) state
+        Init  | existGshellRoot     -> return (Left $ gshellInited existGshellRoot, state)
         Enter | existGshellRoot     -> runStateT (enterGshell path) state
-        Enter | not existGshellRoot -> return (Left "gshell is not inited", state)
+        Enter | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         Clear | existGshellRoot     -> runStateT (clearGshell path) state
-        Clear | not existGshellRoot -> return (Left "gshell is not inited", state)
+        Clear | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
+        Log | existGshellRoot     -> runStateT (logGshell path) state
+        Log | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         (Commit message) | existGshellRoot -> runStateT (commitGshell message currentWork) state
-        (Commit _) | not existGshellRoot -> return (Left "gshell is not inited", state)
+        (Commit _) | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
     return result
-
-

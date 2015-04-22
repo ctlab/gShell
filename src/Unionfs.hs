@@ -42,7 +42,7 @@ runWithExitCodeMessage proc options = do
     processHandle <- spawnProcess proc options
     exitCode <- waitForProcess processHandle
     case exitCode of
-         ExitSuccess -> return $ Right $ show proc ++ " " ++ (last options)
+         ExitSuccess -> return $ Right $ [show proc ++ " " ++ (last options)]
          ExitFailure i -> return $ Left $ show proc ++ " exit code: " ++ show i
 
 unmountWorkspaces :: GState -> IO Result
@@ -51,14 +51,14 @@ unmountWorkspaces state = do
     result <- mapM (unmountWorkspace . (path </>)) $ state ^.. workDirs._name
     if (null $ result ^..below _Right)
        then return $ Left $ concat $ intersperse ", " $ lefts result
-       else return $ Right $ concat $ intersperse ", " $ rights result
+       else return $ Right $ concat $ rights result
 
 unmountWorkspace :: FilePath -> IO Result
 unmountWorkspace toUmount = runEitherT $ do
     mounted <- lift $ isMountPoint toUmount
     result <- if mounted
         then lift $ unmountWorkspace' $ toUmount
-        else return $ Right $ toUmount ++ " is not mounted"
+        else return $ Right $ [toUmount ++ " is not mounted"]
     case result of
         Right b -> return b
         Left b -> left b
@@ -68,10 +68,9 @@ unmountWorkspace' workspace = do
     let options = fuuoptions ++ [workspace]
     runWithExitCodeMessage fuserumount options
 
-createWorkspace :: FilePath -> GState -> IO Result
-createWorkspace workingDir state = do
-    let folders = state ^.. commitsRoot.traverse._name
-        rootDir = projectPath state
+createWorkspace :: FilePath -> [FilePath] -> GState -> IO Result
+createWorkspace workingDir folders state = do
+    let rootDir = projectPath state
     createWorkspace' rootDir folders workingDir
 
 makeDirs :: [FilePath] -> [String]
