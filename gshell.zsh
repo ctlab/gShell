@@ -1,3 +1,4 @@
+# Dont forget to compile with debug = false from Debug.hs
 gshell () {
     if [[ -z $GSHELL_EXECUTABLE ]]
     then
@@ -8,7 +9,7 @@ gshell () {
     enter)
         to_cd=`$GSHELL_EXECUTABLE $@ | sed -e 's/.*\s.*\s//'` # add cheching for Left
         export GSHELL=true
-        cd ${to_cd:0:-1}
+        cd ${to_cd:0:-2}
         ;;
     clear)
         unset GSHELL
