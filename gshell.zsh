@@ -6,10 +6,16 @@ gshell () {
         return 1
     fi
     case $1 in
+    off)
+        unset GSHELL
+        ;;
     enter)
         to_cd=`$GSHELL_EXECUTABLE $@ | sed -e 's/.*\s.*\s//'` # add cheching for Left
         export GSHELL=true
         cd ${to_cd:0:-2}
+        ;;
+    log)
+        $GSHELL_EXECUTABLE log `pwd`
         ;;
     clear)
         unset GSHELL
