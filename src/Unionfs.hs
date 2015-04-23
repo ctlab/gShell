@@ -37,8 +37,6 @@ fuuoptions = ["-uz"]
 
 runWithExitCodeMessage :: FilePath -> [String] -> IO Result
 runWithExitCodeMessage proc options = do
-    printDebug proc
-    printDebug options
     processHandle <- spawnProcess proc options
     exitCode <- waitForProcess processHandle
     case exitCode of

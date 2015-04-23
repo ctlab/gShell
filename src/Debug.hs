@@ -4,7 +4,7 @@ module Debug ( debug
              ) where
 
 debug :: Bool
-debug = True
+debug = False
 
 printDebug :: Show a => a -> IO ()
 printDebug a = if debug then print a else return ()
