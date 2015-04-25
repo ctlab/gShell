@@ -43,7 +43,7 @@ projectPath state = state ^. _anchor </> state ^. _dirTree._name
 filteredByName
   :: (Choice p, Applicative f) =>
      FileName -> Optic' p f (GDir) (GDir)
-filteredByName name = filtered ((== name) . (^. _name))
+filteredByName name = filtered ((isPrefixOf name) . (^. _name))
 
 projectRoot :: Applicative f =>
      ([GDir] -> f [GDir])
@@ -69,7 +69,7 @@ revisionRoot name = commitsRoot.traverse.filteredByName name._contents
 workDirs :: Applicative f =>
          (GDir -> f (GDir))
          -> GState -> f GState
-workDirs = projectRoot.traverse.filtered ((== workDirName) . (Prelude.take (Prelude.length workDirName)) . (^. _name))
+workDirs = projectRoot.traverse.filteredByName workDirName
 
 workingState :: Applicative f =>
            FileName -> (String -> f String)
