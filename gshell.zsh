@@ -2,6 +2,7 @@
 gshell () {
     if [[ -z $GSHELL_EXECUTABLE ]]
     then
+        unset GSHELL
         echo "Set \$GSHELL_EXECUTABLE"
         return 1
     fi
@@ -10,9 +11,9 @@ gshell () {
         unset GSHELL
         ;;
     enter)
-        to_cd=`$GSHELL_EXECUTABLE $@ | sed -e 's/.*\s.*\s//'` # add cheching for Left
-        export GSHELL=true
+        to_cd=`$GSHELL_EXECUTABLE $@ | tail -1 | sed -e 's/.*\s.*\s//'` # add cheching for Left
         cd ${to_cd:0:-2}
+        export GSHELL=true
         ;;
     log)
         $GSHELL_EXECUTABLE log `pwd`
@@ -33,9 +34,15 @@ preexec () {
     # gshell enter -> cd to output and set $GSHELL
 
     # manually switch gshell off by `unset GSHELL`
-    if [[ -n $GSHELL ]]
+    isgshell=$(echo $1 | awk '{print $1;}')
+    if [[ "$isgshell" = "gshell" ]]
     then
-        gshell commit `pwd` "`fc -n -l -1`"
-        cd `pwd`
+        return 0
+    else
+        if [[ -n $GSHELL ]]
+        then
+            gshell commit `pwd` "$1"
+            cd `pwd`
+        fi
     fi
 }
