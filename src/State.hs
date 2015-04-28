@@ -18,6 +18,8 @@ module State ( GState (..)
              , shrinkToGshellOnly
              ) where
 
+import Debug.Trace
+
 import           Names
 
 import           Control.Applicative
@@ -82,7 +84,9 @@ commitsContents :: Applicative f =>
 commitsContents = commitsRoot.traverse._contents.traverse.filteredByName commitFileName._file
 
 generateState :: FilePath -> IO GState
-generateState = readDirectory
+generateState = readDirectoryWithL (\file -> if any (flip isPrefixOf $ takeFileName file) [commitFileName, workHelperFileName]
+                                            then readFile file 
+                                            else return "")
 
 shrinkToGshellOnly :: GState -> GState
 shrinkToGshellOnly state = state & projectRoot .~ (state ^. projectRoot) \\ (state ^.. workDirs)
