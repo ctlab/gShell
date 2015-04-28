@@ -53,6 +53,7 @@ initGshell path = do
 
 enterGshell :: FilePath -> StateT GState IO Result
 enterGshell path = do
+    --TODO create new commit to write
     userId <- lift generateId
     folders <- gets $ flip (^..) (commitsRoot.traverse._name)
     let workState = WorkingState folders
@@ -97,7 +98,7 @@ logGshell path = do
 -- return project root and current work directory
 findProjectRoot :: FilePath -> (FilePath, FilePath)
 findProjectRoot "/" = error "No project, no work"
-findProjectRoot path | (take (length workDirName) $ takeFileName path) == workDirName = (takeDirectory path, path)
+findProjectRoot path | isPrefixOf workDirName $ takeFileName path = (takeDirectory path, path)
 findProjectRoot path | isInfixOf workDirName path = findProjectRoot $ takeDirectory path
 findProjectRoot path = (path, path) --TODO bad bad bad idea
 
@@ -118,4 +119,5 @@ run command path' = do
         Log | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         (Commit message) | existGshellRoot -> runStateT (commitGshell message currentWork) state
         (Commit _) | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
+    printDebug newState
     return result
