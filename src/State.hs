@@ -84,7 +84,7 @@ commitsContents :: Applicative f =>
 commitsContents = commitsRoot.traverse._contents.traverse.filteredByName commitFileName._file
 
 generateState :: FilePath -> IO GState
-generateState = readDirectoryWithL (\file -> if any (flip isPrefixOf $ takeFileName file) [commitFileName, workHelperFileName]
+generateState = readDirectoryWith (\file -> if any (flip isPrefixOf $ takeFileName file) [commitFileName, workHelperFileName]
                                             then readFile file 
                                             else return "")
 
