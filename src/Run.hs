@@ -44,7 +44,6 @@ createCommitDir = do
 initGshell :: FilePath -> StateT GState IO Result
 initGshell path = do
     projectRoot .= initStructure
-    createCommitDir
     writeStateToDisk
     return $ Right [path]
     where initStructure = [
@@ -54,6 +53,7 @@ initGshell path = do
 enterGshell :: FilePath -> StateT GState IO Result
 enterGshell path = do
     --TODO create new commit to write
+    createCommitDir
     userId <- lift generateId
     folders <- gets $ flip (^..) (commitsRoot.traverse._name)
     let workState = WorkingState folders
@@ -90,6 +90,7 @@ commitGshell message currentWork = do
     writeStateToDisk
     get >>= lift . createWorkspace (currentWork) (workState' ^. revisions) >>= return
 
+---FIX log is in random order
 logGshell :: FilePath -> StateT GState IO Result
 logGshell path = do
     history <- gets $ toListOf commitsContents
