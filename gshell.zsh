@@ -29,20 +29,25 @@ gshell () {
 }
 
 preexec () {
-    # set subsequent variables
-    # gshell init -> nothing
-    # gshell enter -> cd to output and set $GSHELL
+    unset GSHELL_DONE
+}
 
-    # manually switch gshell off by `unset GSHELL`
-    isgshell=$(echo $1 | awk '{print $1;}')
-    if [[ "$isgshell" = "gshell" ]]
+precmd() {
+    if [[ -n $GSHELL_DONE ]]
     then
         return 0
     else
-        if [[ -n $GSHELL ]]
+        isgshell=$(echo `fc -n -l -1` | awk '{print $1;}')
+        if [[ "$isgshell" = "gshell" ]]
         then
-            gshell commit `pwd` "$1"
-            cd `pwd`
+            return 0
+        else
+            if [[ -n $GSHELL ]]
+            then
+                gshell commit "`pwd`" "`fc -n -l -1`"
+                cd `pwd`
+                GSHELL_DONE=true
+            fi
         fi
     fi
 }
