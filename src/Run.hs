@@ -31,19 +31,21 @@ data Command = Init
 writeStateToDisk :: StateT (GState) IO (AnchoredDirTree ())
 writeStateToDisk = get >>= lift . writeDirectory
 
-createCommitDir :: StateT GState IO FilePath
-createCommitDir = do
+createCommitDir :: Parents -> StateT GState IO FilePath
+createCommitDir parents = do
     hash <- lift generateHash
     let revName = revDirName ++ hash
     commitsRoot %= (++ initCommit revName)
     return revName 
     where initCommit revName = [
             Dir revName [
-                Dir mountDirName [] ] ]
+                  Dir mountDirName []
+                , File parentsFileName (show parents) ] ]
 
 initGshell :: FilePath -> StateT GState IO Result
 initGshell path = do
     projectRoot .= initStructure
+    createCommitDir $ Parents []
     writeStateToDisk
     return $ Right [path]
     where initStructure = [
@@ -52,10 +54,9 @@ initGshell path = do
 
 enterGshell :: FilePath -> StateT GState IO Result
 enterGshell path = do
-    --TODO create new commit to write
-    createCommitDir
+    --TODO mount master
     userId <- lift generateId
-    folders <- gets $ flip (^..) (commitsRoot.traverse._name)
+    folders <- gets $ sort . flip (^..) (commitsRoot.traverse._name)
     let workState = WorkingState folders
     projectRoot %= (++ initWork userId) --TODO create addState* functions?
     gshellRoot %= (++ initWorkHelper userId workState)
@@ -83,8 +84,10 @@ commitGshell message currentWork = do
     let workName = takeFileName currentWork
     lift $ unmountWorkspace currentWork
     workState <- gets $ read . view (workingState workName)
-    writeCommitMessage message $ last $ workState ^. revisions
-    revName <- createCommitDir
+    let parent = last $ workState ^. revisions
+    lift $ printDebug parent
+    writeCommitMessage message parent
+    revName <- createCommitDir $ Parents [parent]
     let workState' = workState & revisions %~ (++ [revName])
     workingState workName .= show workState'
     writeStateToDisk
@@ -108,6 +111,7 @@ run command path' = do
     let (path, currentWork) = findProjectRoot path'
     printDebug path
     state <- generateState path
+    printDebug state
     let existGshellRoot = not $ null $ state ^. gshellRoot
     (result, newState) <- case command of
         Init  | not existGshellRoot -> runStateT (initGshell path) state

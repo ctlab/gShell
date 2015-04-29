@@ -12,6 +12,10 @@ module Names ( gshellDirName
              , workDir
              , workHelperFileName
              , workHelperFile
+             , parentsFileName
+             , parentsFile
+             , masterFileName
+             , masterFile
              , generateHash
              , generateId
              , gshellInited
@@ -42,6 +46,12 @@ workDir path = path </> workDirName
 
 workHelperFileName = "work-information"
 workHelperFile path workId = path </> gshellDirName </> (workDirName ++ workId) </> workHelperFileName
+
+parentsFileName = "parents"
+parentsFile path revName  = path </> gshellDirName </> commitsDirName </> revName </> parentsFileName
+
+masterFileName = "master"
+masterFile path = path </> gshellDirName </> commitFileName </> masterFileName
 
 generateHash :: IO FilePath
 generateHash = do

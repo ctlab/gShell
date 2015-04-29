@@ -5,6 +5,9 @@ module State ( GState (..)
              , GDir (..)
              , Result (..)
              , WorkingState (..)
+             , Parents (..)
+             , parentsRevs
+             , parents
              , revisions
              , projectPath
              , projectRoot
@@ -37,7 +40,13 @@ type Result = Either String [String]
 
 data WorkingState = WorkingState { _revisions :: [FilePath]
                                  } deriving (Show, Read)
+
 makeLenses ''WorkingState
+
+data Parents = Parents { _parentsRevs :: [FilePath]
+                       } deriving (Show, Read)
+
+makeLenses ''Parents
 
 projectPath :: GState -> FilePath
 projectPath state = state ^. _anchor </> state ^. _dirTree._name
@@ -45,7 +54,7 @@ projectPath state = state ^. _anchor </> state ^. _dirTree._name
 filteredByName
   :: (Choice p, Applicative f) =>
      FileName -> Optic' p f (GDir) (GDir)
-filteredByName name = filtered ((isPrefixOf name) . (^. _name))
+filteredByName name = filtered (isPrefixOf name . (^. _name))
 
 projectRoot :: Applicative f =>
      ([GDir] -> f [GDir])
@@ -74,9 +83,16 @@ workDirs :: Applicative f =>
 workDirs = projectRoot.traverse.filteredByName workDirName
 
 workingState :: Applicative f =>
-           FileName -> (String -> f String)
+           FileName
+           -> (String -> f String)
            -> GState -> f GState
 workingState name = gshellRoot.traverse.filteredByName name._contents.traverse._file 
+
+parents :: Applicative f =>
+           FileName
+           -> (String -> f String)
+           -> GState -> f GState
+parents name = revisionRoot name.traverse.filteredByName parentsFileName._file 
 
 commitsContents :: Applicative f =>
     (String -> f String)
@@ -84,9 +100,11 @@ commitsContents :: Applicative f =>
 commitsContents = commitsRoot.traverse._contents.traverse.filteredByName commitFileName._file
 
 generateState :: FilePath -> IO GState
-generateState = readDirectoryWith (\file -> if any (flip isPrefixOf $ takeFileName file) [commitFileName, workHelperFileName]
+generateState path = do
+    state <- readDirectoryWithL (\file -> if any (flip isPrefixOf $ takeFileName file) [commitFileName, workHelperFileName, masterFileName, parentsFileName]
                                             then readFile file 
-                                            else return "")
+                                            else return "") path
+    return $ state & _dirTree %~ sortDirShape
 
 shrinkToGshellOnly :: GState -> GState
 shrinkToGshellOnly state = state & projectRoot .~ (state ^. projectRoot) \\ (state ^.. workDirs)
