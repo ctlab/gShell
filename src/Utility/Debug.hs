@@ -1,7 +1,7 @@
-module Debug ( debug
-             , printDebug
-             , ifDebug
-             ) where
+module Utility.Debug ( debug
+                     , printDebug
+                     , ifDebug
+                     ) where
 
 debug :: Bool
 debug = True

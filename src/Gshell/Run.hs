@@ -1,16 +1,17 @@
-module Run ( Command(..)
-           , initGshell
-           , enterGshell
-           , clearGshell
-           , run
-           ) where
+module Gshell.Run ( Command(..)
+                  , initGshell
+                  , enterGshell
+                  , clearGshell
+                  , run
+                  ) where
 
-import           Names
-import           State
-import           Unionfs
+import           Gshell.Names
+import           Gshell.State
+import           Gshell.Unionfs
 
-import           Debug
+import           Utility.Debug
 
+import           Control.Applicative
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Trans.Class
@@ -80,25 +81,27 @@ writeCommitMessage :: String -> FilePath -> StateT GState IO ()
 writeCommitMessage message revFolder = do
     revisionRoot revFolder %= (++ [File commitFileName message])
 
+getWorkState :: FilePath -> StateT GState IO WorkingState
+getWorkState currentWork = do
+    let workName = takeFileName currentWork
+    gets $ read . view (workingState workName)
+
 commitGshell :: String -> FilePath -> StateT GState IO Result
 commitGshell message currentWork = do
     modify shrinkToGshellOnly
-    let workName = takeFileName currentWork
     lift $ unmountWorkspace currentWork
-    workState <- gets $ read . view (workingState workName)
+    workState <- getWorkState currentWork
     let parent = last $ workState ^. revisions
-    lift $ printDebug parent
     writeCommitMessage message parent
     revName <- createCommitDir $ Parents [parent]
     let workState' = workState & revisions %~ (++ [revName])
-    workingState workName .= show workState'
+    workingState (takeFileName currentWork) .= show workState'
     writeStateToDisk
     get >>= lift . createWorkspace (currentWork) (workState' ^. revisions) >>= return
 
 logGshell :: FilePath -> StateT GState IO Result
 logGshell currentWork = do
-    let workName = takeFileName currentWork
-    revs <- gets $ view revisions . read . view (workingState workName)
+    revs <- view revisions <$> getWorkState currentWork
     history <- gets $ toListOf (commitsContents revs)
     return $ Right history
 

@@ -1,28 +1,28 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 
-module State ( GState (..)
-             , GDir (..)
-             , Result (..)
-             , WorkingState (..)
-             , Parents (..)
-             , parentsRevs
-             , parents
-             , revisions
-             , projectPath
-             , projectRoot
-             , gshellRoot
-             , commitsRoot
-             , revisionRoot
-             , workDirs
-             , workingState
-             , masterState
-             , commitsContents
-             , generateState
-             , shrinkToGshellOnly
-             ) where
+module Gshell.State ( GState (..)
+                    , GDir (..)
+                    , Result (..)
+                    , WorkingState (..)
+                    , Parents (..)
+                    , parentsRevs
+                    , parents
+                    , revisions
+                    , projectPath
+                    , projectRoot
+                    , gshellRoot
+                    , commitsRoot
+                    , revisionRoot
+                    , workDirs
+                    , workingState
+                    , masterState
+                    , commitsContents
+                    , generateState
+                    , shrinkToGshellOnly
+                    ) where
 
-import           Names
+import           Gshell.Names
 
 import           Control.Applicative
 import           Control.Lens
@@ -53,12 +53,12 @@ projectPath state = state ^. _anchor </> state ^. _dirTree._name
 filteredByName
   :: (Choice p, Applicative f) =>
      FileName -> Optic' p f (GDir) (GDir)
-filteredByName = filtered . (. (^. _name)) . isPrefixOf
+filteredByName = filtered . (. view _name) . isPrefixOf
 
 filteredByNames
   :: (Applicative f, Choice p) =>
      [FileName] -> Optic' p f (DirTree a) (DirTree a)
-filteredByNames = filtered . flip (any . isPrefixOf . (^. _name))
+filteredByNames = filtered . flip (any . isPrefixOf . view _name)
 
 projectRoot :: Applicative f =>
      ([GDir] -> f [GDir])

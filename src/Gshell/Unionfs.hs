@@ -1,12 +1,12 @@
-module Unionfs ( unmountWorkspace
-               , createWorkspace
-               , unmountWorkspaces
-               , generateBranch
-               ) where
+module Gshell.Unionfs ( unmountWorkspace
+                      , createWorkspace
+                      , unmountWorkspaces
+                      , generateBranch
+                      ) where
 
-import           Debug
-import           Names
-import           State
+import           Utility.Debug
+import           Gshell.Names
+import           Gshell.State
 
 import           System.Exit
 import           System.Process

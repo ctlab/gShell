@@ -1,25 +1,25 @@
-module Names ( gshellDirName
-             , gshellDir
-             , commitsDirName
-             , commitsDir
-             , commitFileName
-             , commitFile
-             , revDirName
-             , revDir
-             , mountDirName
-             , mountDir
-             , workDirName
-             , workDir
-             , workHelperFileName
-             , workHelperFile
-             , parentsFileName
-             , parentsFile
-             , masterFileName
-             , masterFile
-             , generateHash
-             , generateId
-             , gshellInited
-             ) where
+module Gshell.Names ( gshellDirName
+                    , gshellDir
+                    , commitsDirName
+                    , commitsDir
+                    , commitFileName
+                    , commitFile
+                    , revDirName
+                    , revDir
+                    , mountDirName
+                    , mountDir
+                    , workDirName
+                    , workDir
+                    , workHelperFileName
+                    , workHelperFile
+                    , parentsFileName
+                    , parentsFile
+                    , masterFileName
+                    , masterFile
+                    , generateHash
+                    , generateId
+                    , gshellInited
+                    ) where
 
 import           Control.Applicative
 import           Data.Time.Clock.POSIX

@@ -1,6 +1,6 @@
 module Main where
 
-import           Run
+import           Gshell.Run
 
 import           Data.String        (fromString)
 
