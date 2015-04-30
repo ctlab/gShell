@@ -24,6 +24,7 @@ import           Data.List
 
 data Command = Init
              | Enter
+             | EnterRevision FilePath
              | Clear
              | Commit String
              | Log deriving ( Show )
@@ -54,10 +55,10 @@ initGshell path = do
                 Dir commitsDirName [
                     File masterFileName [] ] ] ]
 
-enterGshell :: FilePath -> StateT GState IO Result
-enterGshell path = do
+enterGshell :: FilePath -> Maybe FilePath -> StateT GState IO Result
+enterGshell path revName = do
     userId <- lift generateId
-    folders <- gets $ generateBranch =<< view masterState
+    folders <- gets $ generateBranch =<< maybe (view masterState) (const . id) revName
     let workState = WorkingState folders
     projectRoot %= (++ initWork userId)
     gshellRoot %= (++ initWorkHelper userId workState)
@@ -95,8 +96,10 @@ commitGshell message currentWork = do
     get >>= lift . createWorkspace (currentWork) (workState' ^. revisions) >>= return
 
 logGshell :: FilePath -> StateT GState IO Result
-logGshell path = do
-    history <- gets $ toListOf commitsContents
+logGshell currentWork = do
+    let workName = takeFileName currentWork
+    revs <- gets $ view revisions . read . view (workingState workName)
+    history <- gets $ toListOf (commitsContents revs)
     return $ Right history
 
 -- return project root and current work directory
@@ -116,11 +119,13 @@ run command path' = do
     (result, newState) <- case command of
         Init  | not existGshellRoot -> runStateT (initGshell path) state
         Init  | existGshellRoot     -> return (Left $ gshellInited existGshellRoot, state)
-        Enter | existGshellRoot     -> runStateT (enterGshell path) state
+        Enter | existGshellRoot     -> runStateT (enterGshell path Nothing) state
         Enter | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
+        (EnterRevision revName) | existGshellRoot -> runStateT (enterGshell path $ Just revName) state
+        (EnterRevision _) | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         Clear | existGshellRoot     -> runStateT (clearGshell path) state
         Clear | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
-        Log | existGshellRoot     -> runStateT (logGshell path) state
+        Log | existGshellRoot     -> runStateT (logGshell currentWork) state
         Log | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         (Commit message) | existGshellRoot -> runStateT (commitGshell message currentWork) state
         (Commit _) | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)

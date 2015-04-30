@@ -53,7 +53,12 @@ projectPath state = state ^. _anchor </> state ^. _dirTree._name
 filteredByName
   :: (Choice p, Applicative f) =>
      FileName -> Optic' p f (GDir) (GDir)
-filteredByName name = filtered (isPrefixOf name . (^. _name))
+filteredByName = filtered . (. (^. _name)) . isPrefixOf
+
+filteredByNames
+  :: (Applicative f, Choice p) =>
+     [FileName] -> Optic' p f (DirTree a) (DirTree a)
+filteredByNames = filtered . flip (any . isPrefixOf . (^. _name))
 
 projectRoot :: Applicative f =>
      ([GDir] -> f [GDir])
@@ -99,9 +104,10 @@ parents :: Applicative f =>
 parents name = revisionRoot name.traverse.filteredByName parentsFileName._file
 
 commitsContents :: Applicative f =>
-    (String -> f String)
+    [FileName]
+    -> (String -> f String)
     -> GState -> f GState
-commitsContents = commitsRoot.traverse._contents.traverse.filteredByName commitFileName._file
+commitsContents revisions = commitsRoot.traverse.filteredByNames revisions._contents.traverse.filteredByName commitFileName._file
 
 generateState :: FilePath -> IO GState
 generateState path = do

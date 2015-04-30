@@ -19,6 +19,7 @@ main = do
       "enter"  -> run Enter path
       "clear"  -> run Clear path
       "commit" -> run (Commit $ args !! 2) path
+      "enterRev" -> run (EnterRevision $ args !! 2) path
       "log"    -> run Log path
       _        -> error "invalid command"
     case res of
