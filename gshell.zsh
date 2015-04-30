@@ -11,8 +11,8 @@ gshell () {
         unset GSHELL
         ;;
     enter)
-        to_cd=`$GSHELL_EXECUTABLE $@ | tail -1 | sed -e 's/.*\s.*\s//'` # add cheching for Left
-        cd ${to_cd:0:-2}
+        to_cd=`$GSHELL_EXECUTABLE $@ | tail -1 | awk '{print $2;}'` # add cheching for Left
+        cd ${to_cd}
         export GSHELL=true
         ;;
     log)

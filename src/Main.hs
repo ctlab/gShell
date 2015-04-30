@@ -21,4 +21,6 @@ main = do
       "commit" -> run (Commit $ args !! 2) path
       "log"    -> run Log path
       _        -> error "invalid command"
-    print res
+    case res of
+         Right r -> mapM_ putStrLn r
+         _ -> print res
