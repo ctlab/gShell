@@ -16,12 +16,11 @@ module State ( GState (..)
              , revisionRoot
              , workDirs
              , workingState
+             , masterState
              , commitsContents
              , generateState
              , shrinkToGshellOnly
              ) where
-
-import Debug.Trace
 
 import           Names
 
@@ -86,13 +85,18 @@ workingState :: Applicative f =>
            FileName
            -> (String -> f String)
            -> GState -> f GState
-workingState name = gshellRoot.traverse.filteredByName name._contents.traverse._file 
+workingState name = gshellRoot.traverse.filteredByName name._contents.traverse.filteredByName workHelperFileName._file
+
+masterState :: Applicative f =>
+        (String -> f String)
+        -> GState -> f GState
+masterState = commitsRoot.traverse.filteredByName masterFileName._file
 
 parents :: Applicative f =>
            FileName
            -> (String -> f String)
            -> GState -> f GState
-parents name = revisionRoot name.traverse.filteredByName parentsFileName._file 
+parents name = revisionRoot name.traverse.filteredByName parentsFileName._file
 
 commitsContents :: Applicative f =>
     (String -> f String)
@@ -102,7 +106,7 @@ commitsContents = commitsRoot.traverse._contents.traverse.filteredByName commitF
 generateState :: FilePath -> IO GState
 generateState path = do
     state <- readDirectoryWithL (\file -> if any (flip isPrefixOf $ takeFileName file) [commitFileName, workHelperFileName, masterFileName, parentsFileName]
-                                            then readFile file 
+                                            then readFile file
                                             else return "") path
     return $ state & _dirTree %~ sortDirShape
 

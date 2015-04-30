@@ -36,7 +36,7 @@ createCommitDir parents = do
     hash <- lift generateHash
     let revName = revDirName ++ hash
     commitsRoot %= (++ initCommit revName)
-    return revName 
+    return revName
     where initCommit revName = [
             Dir revName [
                   Dir mountDirName []
@@ -45,20 +45,21 @@ createCommitDir parents = do
 initGshell :: FilePath -> StateT GState IO Result
 initGshell path = do
     projectRoot .= initStructure
-    createCommitDir $ Parents []
+    revName <- createCommitDir $ Parents []
+    masterState .= revName
     writeStateToDisk
     return $ Right [path]
     where initStructure = [
             Dir gshellDirName [
-                Dir commitsDirName [] ] ]
+                Dir commitsDirName [
+                    File masterFileName [] ] ] ]
 
 enterGshell :: FilePath -> StateT GState IO Result
 enterGshell path = do
-    --TODO mount master
     userId <- lift generateId
-    folders <- gets $ sort . flip (^..) (commitsRoot.traverse._name)
+    folders <- gets $ generateBranch =<< view masterState
     let workState = WorkingState folders
-    projectRoot %= (++ initWork userId) --TODO create addState* functions?
+    projectRoot %= (++ initWork userId)
     gshellRoot %= (++ initWorkHelper userId workState)
     writeStateToDisk
     get >>= lift . createWorkspace ((workDir path) ++ userId) folders >>= return
@@ -93,7 +94,6 @@ commitGshell message currentWork = do
     writeStateToDisk
     get >>= lift . createWorkspace (currentWork) (workState' ^. revisions) >>= return
 
----FIX log is in random order
 logGshell :: FilePath -> StateT GState IO Result
 logGshell path = do
     history <- gets $ toListOf commitsContents

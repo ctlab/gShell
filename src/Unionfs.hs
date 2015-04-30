@@ -1,6 +1,7 @@
 module Unionfs ( unmountWorkspace
                , createWorkspace
                , unmountWorkspaces
+               , generateBranch
                ) where
 
 import           Debug
@@ -71,6 +72,15 @@ createWorkspace workingDir folders state = do
     let rootDir = projectPath state
     createWorkspace' rootDir folders workingDir
 
+generateBranch :: String -> GState -> [FilePath]
+generateBranch = flip generateBranch'
+
+generateBranch' :: GState -> String -> [FilePath]
+generateBranch' state rev = rev : otherParents
+    where
+        allParents = (read $ state ^. parents rev) ^. parentsRevs
+        otherParents = if null allParents then [] else concatMap (generateBranch' state) allParents
+
 makeDirs :: [FilePath] -> [String]
 makeDirs folders = [intercalate ":" $ head' ++ tail']
     where
@@ -79,6 +89,6 @@ makeDirs folders = [intercalate ":" $ head' ++ tail']
 
 createWorkspace' :: FilePath -> [FilePath] -> FilePath -> IO Result
 createWorkspace' rootDir folders workspace = do
-    let folders' = makeDirs $ map (flip (</>) mountDirName . (commitsDir rootDir </>)) folders
+    let folders' = makeDirs $ map (flip (</>) mountDirName . (commitsDir rootDir </>)) $ sort folders
     let options = ufoptions ++ folders' ++ [workspace]
     runWithExitCodeMessage unionfs options

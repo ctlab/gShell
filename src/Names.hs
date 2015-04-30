@@ -51,7 +51,7 @@ parentsFileName = "parents"
 parentsFile path revName  = path </> gshellDirName </> commitsDirName </> revName </> parentsFileName
 
 masterFileName = "master"
-masterFile path = path </> gshellDirName </> commitFileName </> masterFileName
+masterFile path = path </> gshellDirName </> commitsDirName </> masterFileName
 
 generateHash :: IO FilePath
 generateHash = do
