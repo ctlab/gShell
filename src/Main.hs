@@ -18,6 +18,8 @@ main = do
       "init"   -> run Init path
       "enter"  -> run Enter path
       "clear"  -> run Clear path
+      "push"   -> run Push path
+      "pull"   -> run Pull path
       "commit" -> run (Commit $ args !! 2) path
       "enterRev" -> run (EnterRevision $ args !! 2) path
       "log"    -> run Log path

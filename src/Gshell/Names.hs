@@ -19,9 +19,11 @@ module Gshell.Names ( gshellDirName
                     , generateHash
                     , generateId
                     , gshellInited
+                    , mergeOf
                     ) where
 
 import           Control.Applicative
+import           Data.List
 import           Data.Time.Clock.POSIX
 import           System.FilePath
 import           System.Random
@@ -72,3 +74,6 @@ generateId = do
 
 gshellInited :: Bool -> String
 gshellInited a = "gshell is " ++ (if a then "already" else "not") ++ " inited"
+
+mergeOf :: [FilePath] -> String
+mergeOf revs = concat $ ["Merge of: "] ++ (intersperse ", " revs)

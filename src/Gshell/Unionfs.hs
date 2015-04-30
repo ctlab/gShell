@@ -72,8 +72,10 @@ createWorkspace workingDir folders state = do
     let rootDir = projectPath state
     createWorkspace' rootDir folders workingDir
 
-generateBranch :: String -> GState -> [FilePath]
-generateBranch = flip generateBranch'
+generateBranch :: [String] -> GState -> [FilePath]
+generateBranch revs state = result
+    where
+        result = sort $ nub $ concatMap (generateBranch' state) revs
 
 generateBranch' :: GState -> String -> [FilePath]
 generateBranch' state rev = rev : otherParents

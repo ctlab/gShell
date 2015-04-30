@@ -28,9 +28,11 @@ data Command = Init
              | EnterRevision FilePath
              | Clear
              | Commit String
+             | Push
+             | Pull
              | Log deriving ( Show )
 
-writeStateToDisk :: StateT (GState) IO (AnchoredDirTree ())
+writeStateToDisk :: StateT GState IO (AnchoredDirTree ())
 writeStateToDisk = get >>= lift . writeDirectory
 
 createCommitDir :: Parents -> StateT GState IO FilePath
@@ -59,12 +61,12 @@ initGshell path = do
 enterGshell :: FilePath -> Maybe FilePath -> StateT GState IO Result
 enterGshell path revName = do
     userId <- lift generateId
-    folders <- gets $ generateBranch =<< maybe (view masterState) (const . id) revName
+    folders <- gets $ generateBranch =<< pure . maybe (view masterState) const revName
     let workState = WorkingState folders
     projectRoot %= (++ initWork userId)
     gshellRoot %= (++ initWorkHelper userId workState)
     writeStateToDisk
-    get >>= lift . createWorkspace ((workDir path) ++ userId) folders >>= return
+    get >>= lift . createWorkspace (workDir path ++ userId) folders
     where initWork userId = [
             Dir (workDirName ++ userId) [] ]
           initWorkHelper userId workState = [
@@ -78,7 +80,7 @@ clearGshell path = do
     return result
 
 writeCommitMessage :: String -> FilePath -> StateT GState IO ()
-writeCommitMessage message revFolder = do
+writeCommitMessage message revFolder =
     revisionRoot revFolder %= (++ [File commitFileName message])
 
 getWorkState :: FilePath -> StateT GState IO WorkingState
@@ -94,10 +96,35 @@ commitGshell message currentWork = do
     let parent = last $ workState ^. revisions
     writeCommitMessage message parent
     revName <- createCommitDir $ Parents [parent]
-    let workState' = workState & revisions %~ (++ [revName])
+    workState' <- gets $ WorkingState . generateBranch [revName]
     workingState (takeFileName currentWork) .= show workState'
     writeStateToDisk
-    get >>= lift . createWorkspace (currentWork) (workState' ^. revisions) >>= return
+    get >>= lift . createWorkspace currentWork (workState' ^. revisions)
+
+pushGshell :: FilePath -> StateT GState IO Result
+pushGshell currentWork = do
+    workState <- getWorkState currentWork
+    let mainParent = last $ workState ^. revisions
+    oldParent <- use masterState
+    revName <- createCommitDir $ Parents [mainParent, oldParent]
+    masterState .= revName
+    writeStateToDisk
+    return $ Right [revName]
+
+pullGshell :: FilePath -> StateT GState IO Result
+pullGshell currentWork = do
+    modify shrinkToGshellOnly
+    lift $ unmountWorkspace currentWork
+    workState <- getWorkState currentWork
+    let mainParent = last $ workState ^. revisions
+    oldParent <- use masterState
+    revName <- createCommitDir $ Parents [mainParent, oldParent]
+    writeCommitMessage (mergeOf [mainParent, oldParent]) revName
+    newRevName <- createCommitDir $ Parents [revName]
+    workState' <- gets $ WorkingState . generateBranch [newRevName]
+    workingState (takeFileName currentWork) .= show workState'
+    writeStateToDisk
+    get >>= lift . createWorkspace currentWork (workState' ^. revisions)
 
 logGshell :: FilePath -> StateT GState IO Result
 logGshell currentWork = do
@@ -109,15 +136,13 @@ logGshell currentWork = do
 findProjectRoot :: FilePath -> (FilePath, FilePath)
 findProjectRoot "/" = error "No project, no work"
 findProjectRoot path | isPrefixOf workDirName $ takeFileName path = (takeDirectory path, path)
-findProjectRoot path | isInfixOf workDirName path = findProjectRoot $ takeDirectory path
+findProjectRoot path | workDirName `isInfixOf` path = findProjectRoot $ takeDirectory path
 findProjectRoot path = (path, path) --TODO bad bad bad idea
 
 run :: Command -> FilePath -> IO Result
 run command path' = do
     let (path, currentWork) = findProjectRoot path'
-    printDebug path
     state <- generateState path
-    printDebug state
     let existGshellRoot = not $ null $ state ^. gshellRoot
     (result, newState) <- case command of
         Init  | not existGshellRoot -> runStateT (initGshell path) state
@@ -130,7 +155,10 @@ run command path' = do
         Clear | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         Log | existGshellRoot     -> runStateT (logGshell currentWork) state
         Log | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
+        Push | existGshellRoot     -> runStateT (pushGshell currentWork) state
+        Push | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
+        Pull | existGshellRoot     -> runStateT (pullGshell currentWork) state
+        Pull | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         (Commit message) | existGshellRoot -> runStateT (commitGshell message currentWork) state
         (Commit _) | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
-    printDebug newState
     return result

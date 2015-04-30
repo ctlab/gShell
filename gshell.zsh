@@ -10,6 +10,9 @@ gshell () {
     off)
         unset GSHELL
         ;;
+    on)
+        GSHELL=true
+        ;;
     enter | enterRev)
         to_cd=`$GSHELL_EXECUTABLE $@ | tail -1 | awk '{print $2;}'` # add cheching for Left
         cd ${to_cd}
@@ -17,6 +20,13 @@ gshell () {
         ;;
     log)
         $GSHELL_EXECUTABLE log `pwd`
+        ;;
+    push)
+        $GSHELL_EXECUTABLE push `pwd`
+        ;;
+    pull)
+        $GSHELL_EXECUTABLE pull `pwd`
+        cd `pwd`
         ;;
     clear)
         unset GSHELL
