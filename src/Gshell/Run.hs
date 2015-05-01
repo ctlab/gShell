@@ -17,6 +17,9 @@ import           Control.Monad
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.State
 
+import           Control.Exception
+import           Control.DeepSeq
+
 import           System.Directory
 import           System.Directory.Tree
 import           System.FilePath
@@ -123,7 +126,6 @@ pullGshell currentWork = do
     newRevName <- createCommitDir $ Parents [revName]
     workState' <- gets $ WorkingState . generateBranch [newRevName]
     workingState (takeFileName currentWork) .= show workState'
-    lift $ printDebug workState'
     writeStateToDisk
     get >>= lift . createWorkspace currentWork (workState' ^. revisions)
 
@@ -144,7 +146,7 @@ run :: Command -> FilePath -> IO Result
 run command path' = do
     let (path, currentWork) = findProjectRoot path'
     state <- generateState path
-    printDebug state
+    evaluate $ rnf $ show state
     let existGshellRoot = not $ null $ state ^. gshellRoot
     (result, newState) <- case command of
         Init  | not existGshellRoot -> runStateT (initGshell path) state
@@ -163,5 +165,4 @@ run command path' = do
         Pull | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         (Commit message) | existGshellRoot -> runStateT (commitGshell message currentWork) state
         (Commit _) | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
-    printDebug newState
     return result

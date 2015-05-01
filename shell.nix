@@ -1,8 +1,8 @@
 with (import <nixpkgs> {}).pkgs;
 let pkg = haskellngPackages.callPackage
             ({ mkDerivation, base, bytestring, cereal, containers, data-default
-             , directory, directory-tree, filepath, lens, process, random
-             , stdenv, time, transformers, unix, either, Unixutils
+             , deepseq, directory, directory-tree, either, filepath, lens
+             , process, random, stdenv, time, transformers, unix, Unixutils
              }:
              mkDerivation {
                pname = "gShell";
@@ -11,9 +11,9 @@ let pkg = haskellngPackages.callPackage
                isLibrary = false;
                isExecutable = true;
                buildDepends = [
-                 base bytestring cereal containers data-default directory
-                 directory-tree filepath lens process random time transformers unix
-                 either Unixutils
+                 base bytestring cereal containers data-default deepseq directory
+                 directory-tree either filepath lens process random time
+                 transformers unix Unixutils
                ];
                homepage = "https://github.com/ctlab/gShell";
                license = stdenv.lib.licenses.mit;

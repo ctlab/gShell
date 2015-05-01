@@ -111,7 +111,7 @@ commitsContents revisions = commitsRoot.traverse.filteredByNames revisions._cont
 
 generateState :: FilePath -> IO GState
 generateState path = do
-    state <- readDirectoryWithL (\file -> if any (flip isPrefixOf $ takeFileName file) [commitFileName, workHelperFileName, masterFileName, parentsFileName]
+    state <- readDirectoryWith (\file -> if any (flip isPrefixOf $ takeFileName file) [commitFileName, workHelperFileName, masterFileName, parentsFileName]
                                             then readFile file
                                             else return "") path
     return $ state & _dirTree %~ sortDirShape
