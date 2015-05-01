@@ -16,6 +16,8 @@ module Gshell.Names ( gshellDirName
                     , parentsFile
                     , masterFileName
                     , masterFile
+                    , timeStampFileName
+                    , timeStampFile
                     , generateHash
                     , generateId
                     , gshellInited
@@ -24,7 +26,6 @@ module Gshell.Names ( gshellDirName
 
 import           Control.Applicative
 import           Data.List
-import           Data.Time.Clock.POSIX
 import           System.FilePath
 import           System.Random
 
@@ -55,14 +56,16 @@ parentsFile path revName  = path </> gshellDirName </> commitsDirName </> revNam
 masterFileName = "master"
 masterFile path = path </> gshellDirName </> commitsDirName </> masterFileName
 
+timeStampFileName = "time-stamp"
+timeStampFile path revName = path </> gshellDirName </> commitsDirName </> revName </> timeStampFileName
+
 generateHash :: IO FilePath
 generateHash = do
     g <- newStdGen
-    time <- show <$> getPOSIXTime
-    let a = take 5 $ (randomRs ('a', 'z') g)
-    let b = take 5 $ (randomRs ('0', '9') g)
+    let a = take 10 $ (randomRs ('a', 'z') g)
+    let b = take 10 $ (randomRs ('0', '9') g)
     let hash = concat $ zipWith (\a b -> a:[b]) a b
-    return $ "-" ++ time ++ "-" ++ hash
+    return $ "-" ++ hash
 
 generateId :: IO FilePath
 generateId = do

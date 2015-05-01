@@ -23,6 +23,7 @@ import           Control.DeepSeq
 import           System.Directory
 import           System.Directory.Tree
 import           System.FilePath
+import           Data.Time.Clock.POSIX
 
 import           Data.List
 
@@ -41,13 +42,15 @@ writeStateToDisk = get >>= lift . writeDirectory
 createCommitDir :: Parents -> StateT GState IO FilePath
 createCommitDir parents = do
     hash <- lift generateHash
+    time <- lift $ show <$> getPOSIXTime
     let revName = revDirName ++ hash
-    commitsRoot %= (++ initCommit revName)
+    commitsRoot %= (++ initCommit revName time)
     return revName
-    where initCommit revName = [
+    where initCommit revName time = [
             Dir revName [
                   Dir mountDirName []
-                , File parentsFileName (show parents) ] ]
+                , File parentsFileName $ show parents
+                , File timeStampFileName time ] ]
 
 initGshell :: FilePath -> StateT GState IO Result
 initGshell path = do
@@ -88,6 +91,11 @@ writeCommitMessage :: String -> FilePath -> StateT GState IO ()
 writeCommitMessage message revFolder =
     revisionRoot revFolder %= (++ [File commitFileName message])
 
+setTimeStamp :: FilePath -> StateT GState IO ()
+setTimeStamp revFolder = do
+    time <- lift $ show <$> getPOSIXTime
+    timeStamp revFolder .= time
+
 getWorkState :: FilePath -> StateT GState IO WorkingState
 getWorkState currentWork = do
     let workName = takeFileName currentWork
@@ -99,6 +107,7 @@ commitGshell message currentWork = do
     lift $ unmountWorkspace currentWork
     workState <- getWorkState currentWork
     let parent = last $ workState ^. revisions
+    setTimeStamp parent
     writeCommitMessage message parent
     revName <- createCommitDir $ Parents [parent]
     workState' <- gets $ WorkingState . generateBranch [revName]
@@ -109,7 +118,7 @@ commitGshell message currentWork = do
 pushGshell :: FilePath -> StateT GState IO Result
 pushGshell currentWork = do
     workState <- getWorkState currentWork
-    let mainParent = last $ workState ^. revisions
+    let mainParent = last $ init $ workState ^. revisions
     oldParent <- use masterState
     revName <- createCommitDir $ Parents [mainParent, oldParent]
     masterState .= revName

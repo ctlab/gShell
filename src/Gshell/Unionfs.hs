@@ -75,7 +75,8 @@ createWorkspace workingDir folders state = do
 generateBranch :: [String] -> GState -> [FilePath]
 generateBranch revs state = result
     where
-        result = sort $ nub $ concatMap (generateBranch' state) revs
+        result = sortBy cmp $ nub $ concatMap (generateBranch' state) revs
+        cmp rev1 rev2 = (state ^. timeStamp rev1) `compare` (state ^. timeStamp rev2)
 
 generateBranch' :: GState -> String -> [FilePath]
 generateBranch' state rev = rev : otherParents
@@ -91,6 +92,7 @@ makeDirs folders = [intercalate ":" $ head' ++ tail']
 
 createWorkspace' :: FilePath -> [FilePath] -> FilePath -> IO Result
 createWorkspace' rootDir folders workspace = do
-    let folders' = makeDirs $ map (flip (</>) mountDirName . (commitsDir rootDir </>)) $ sort folders
+    let folders' = makeDirs $ map (flip (</>) mountDirName . (commitsDir rootDir </>)) $ folders
     let options = ufoptions ++ folders' ++ [workspace]
+    printDebug folders'
     runWithExitCodeMessage unionfs options

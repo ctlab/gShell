@@ -17,6 +17,7 @@ module Gshell.State ( GState (..)
                     , workDirs
                     , workingState
                     , masterState
+                    , timeStamp 
                     , commitsContents
                     , generateState
                     , shrinkToGshellOnly
@@ -103,6 +104,12 @@ parents :: Applicative f =>
            -> GState -> f GState
 parents name = revisionRoot name.traverse.filteredByName parentsFileName._file
 
+timeStamp :: Applicative f =>
+           FileName
+           -> (String -> f String)
+           -> GState -> f GState
+timeStamp name = revisionRoot name.traverse.filteredByName timeStampFileName._file
+
 commitsContents :: Applicative f =>
     [FileName]
     -> (String -> f String)
@@ -111,7 +118,7 @@ commitsContents revisions = commitsRoot.traverse.filteredByNames revisions._cont
 
 generateState :: FilePath -> IO GState
 generateState path = do
-    state <- readDirectoryWithL (\file -> if any (flip isPrefixOf $ takeFileName file) [commitFileName, workHelperFileName, masterFileName, parentsFileName]
+    state <- readDirectoryWithL (\file -> if any (flip isPrefixOf $ takeFileName file) [commitFileName, workHelperFileName, masterFileName, parentsFileName, timeStampFileName]
                                             then readFile file
                                             else return "") path
     return $ state & _dirTree %~ myTransformDir removeUnessesary [] . sortDirShape
