@@ -146,7 +146,7 @@ run :: Command -> FilePath -> IO Result
 run command path' = do
     let (path, currentWork) = findProjectRoot path'
     state <- generateState path
-    evaluate $ rnf $ show state
+    evaluate $ rnf $ show state --fix for proper mater update, TODO get why it's like that
     let existGshellRoot = not $ null $ state ^. gshellRoot
     (result, newState) <- case command of
         Init  | not existGshellRoot -> runStateT (initGshell path) state

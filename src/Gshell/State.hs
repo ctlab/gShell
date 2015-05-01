@@ -111,10 +111,20 @@ commitsContents revisions = commitsRoot.traverse.filteredByNames revisions._cont
 
 generateState :: FilePath -> IO GState
 generateState path = do
-    state <- readDirectoryWith (\file -> if any (flip isPrefixOf $ takeFileName file) [commitFileName, workHelperFileName, masterFileName, parentsFileName]
+    state <- readDirectoryWithL (\file -> if any (flip isPrefixOf $ takeFileName file) [commitFileName, workHelperFileName, masterFileName, parentsFileName]
                                             then readFile file
                                             else return "") path
-    return $ state & _dirTree %~ sortDirShape
+    return $ state & _dirTree %~ myTransformDir removeUnessesary [] . sortDirShape
+    where
+        removeUnessesary parent (Dir name contents)
+            | workDirName `isPrefixOf` name && parent /= gshellDirName
+                || name `isPrefixOf` mountDirName = Dir name []
+        removeUnessesary parent c = c
+
+myTransformDir :: (FilePath -> DirTree a -> DirTree a) -> FilePath -> DirTree a -> DirTree a
+myTransformDir f p t = case f p t of
+                     (Dir n cs) -> Dir n $ map (myTransformDir f n) cs
+                     t'         -> t'
 
 shrinkToGshellOnly :: GState -> GState
 shrinkToGshellOnly state = state & projectRoot .~ (state ^. projectRoot) \\ (state ^.. workDirs)
