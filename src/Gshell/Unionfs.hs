@@ -94,5 +94,4 @@ createWorkspace' :: FilePath -> [FilePath] -> FilePath -> IO Result
 createWorkspace' rootDir folders workspace = do
     let folders' = makeDirs $ map (flip (</>) mountDirName . (commitsDir rootDir </>)) $ folders
     let options = ufoptions ++ folders' ++ [workspace]
-    printDebug folders'
     runWithExitCodeMessage unionfs options
