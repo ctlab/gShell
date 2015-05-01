@@ -64,7 +64,9 @@ initGshell path = do
 enterGshell :: FilePath -> Maybe FilePath -> StateT GState IO Result
 enterGshell path revName = do
     userId <- lift generateId
-    folders <- gets $ generateBranch =<< pure . maybe (view masterState) const revName
+    folders <- (gets $ pure . maybe (view masterState) const revName)
+        >>= createCommitDir . Parents
+        >>= gets . generateBranch . pure
     let workState = WorkingState folders
     projectRoot %= (++ initWork userId)
     gshellRoot %= (++ initWorkHelper userId workState)
