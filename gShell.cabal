@@ -20,6 +20,6 @@ executable gShell
   main-is:             Main.hs
   -- other-modules:       
   -- other-extensions:    
-  build-depends:       base >=4.6 && <4.8, unix >=2.7 && <2.8, process >=1.2 && <1.3, data-default, bytestring, cereal, containers, directory, lens, filepath, time, random, directory-tree, transformers, either, Unixutils, deepseq
+  build-depends:       base >= 4.8, unix >=2.7 && <2.8, process >=1.2 && <1.3, data-default, bytestring, cereal, containers, directory, lens, filepath, time, random, directory-tree, transformers, either, Unixutils, deepseq
   hs-source-dirs:      src
   default-language:    Haskell2010

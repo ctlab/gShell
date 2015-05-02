@@ -20,7 +20,6 @@ module Gshell.State ( GState (..)
                     , timeStamp 
                     , commitsContents
                     , generateState
-                    , shrinkToGshellOnly
                     ) where
 
 import           Gshell.Names
@@ -132,6 +131,3 @@ myTransformDir :: (FilePath -> DirTree a -> DirTree a) -> FilePath -> DirTree a 
 myTransformDir f p t = case f p t of
                      (Dir n cs) -> Dir n $ map (myTransformDir f n) cs
                      t'         -> t'
-
-shrinkToGshellOnly :: GState -> GState
-shrinkToGshellOnly state = state & projectRoot .~ (state ^. projectRoot) \\ (state ^.. workDirs)

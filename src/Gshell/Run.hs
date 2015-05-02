@@ -103,7 +103,6 @@ getWorkState currentWork = do
 
 commitGshell :: String -> FilePath -> StateT GState IO Result
 commitGshell message currentWork = do
-    modify shrinkToGshellOnly
     lift $ unmountWorkspace currentWork
     workState <- getWorkState currentWork
     let parent = last $ workState ^. revisions
@@ -115,26 +114,46 @@ commitGshell message currentWork = do
     writeStateToDisk
     get >>= lift . createWorkspace currentWork (workState' ^. revisions)
 
+isConflict :: WorkingState -> StateT GState IO Bool
+isConflict workState = do
+    mainParentBranch <- gets $ generateBranch $ pure $ last $ workState ^. revisions
+    oldParentBranch <- use masterState >>= gets . generateBranch . pure
+    return $ not $ oldParentBranch `isSubsequenceOf` mainParentBranch
+
 pushGshell :: FilePath -> StateT GState IO Result
 pushGshell currentWork = do
     workState <- getWorkState currentWork
-    let mainParent = last $ init $ workState ^. revisions
+    conflict <- isConflict workState
+    if conflict 
+    then
+        return $ Left "Conflict! Do gshell pull first."
+    else do
+        masterState .= (last $ init $ workState ^. revisions)
+        writeStateToDisk
+        return $ Right ["Push success"]
+
+merge :: WorkingState -> StateT GState IO FilePath
+merge workState = do
+    let mainParent = last $ workState ^. revisions
     oldParent <- use masterState
-    revName <- createCommitDir $ Parents [mainParent, oldParent]
-    masterState .= revName
-    writeStateToDisk
-    return $ Right [revName]
+    conflict <- isConflict workState
+    if conflict
+    then do
+        revName <- createCommitDir $ Parents [mainParent, oldParent]
+        writeCommitMessage (mergeOf [mainParent, oldParent]) revName
+        createCommitDir $ Parents [revName]
+    else do
+        time1 <- use $ timeStamp mainParent
+        time2 <- use $ timeStamp oldParent
+        if time1 > time2 
+        then return mainParent
+        else return oldParent
 
 pullGshell :: FilePath -> StateT GState IO Result
 pullGshell currentWork = do
-    modify shrinkToGshellOnly
     lift $ unmountWorkspace currentWork
     workState <- getWorkState currentWork
-    let mainParent = last $ workState ^. revisions
-    oldParent <- use masterState
-    revName <- createCommitDir $ Parents [mainParent, oldParent]
-    writeCommitMessage (mergeOf [mainParent, oldParent]) revName
-    newRevName <- createCommitDir $ Parents [revName]
+    newRevName <- merge workState
     workState' <- gets $ WorkingState . generateBranch [newRevName]
     workingState (takeFileName currentWork) .= show workState'
     writeStateToDisk
