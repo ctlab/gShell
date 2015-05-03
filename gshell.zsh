@@ -1,4 +1,10 @@
+autoload -U add-zsh-hook
+
+add-zsh-hook preexec preexec_gshell
+add-zsh-hook precmd precmd_gshell
+
 # Dont forget to compile with debug = false from Debug.hs
+
 gshell () {
     if [[ -z $GSHELL_EXECUTABLE ]]
     then
@@ -42,11 +48,11 @@ gshell () {
     esac
 }
 
-preexec () {
+preexec_gshell () {
     unset GSHELL_DONE
 }
 
-precmd() {
+precmd_gshell () {
     if [[ -n $GSHELL_DONE ]]
     then
         return 0
