@@ -1,10 +1,10 @@
-module Gshell.Run ( Command(..)
-                  , initGshell
+module Gshell.Run ( initGshell
                   , enterGshell
                   , clearGshell
                   , run
                   ) where
 
+import           Gshell.Command
 import           Gshell.Names
 import           Gshell.State
 import           Gshell.Unionfs
@@ -17,24 +17,15 @@ import           Control.Monad
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.State
 
-import           Control.Exception
 import           Control.DeepSeq
+import           Control.Exception
 
+import           Data.Time.Clock.POSIX
 import           System.Directory
 import           System.Directory.Tree
 import           System.FilePath
-import           Data.Time.Clock.POSIX
 
 import           Data.List
-
-data Command = Init
-             | Enter
-             | EnterRevision FilePath
-             | Clear
-             | Commit String
-             | Push
-             | Pull
-             | Log deriving ( Show )
 
 writeStateToDisk :: StateT GState IO (AnchoredDirTree ())
 writeStateToDisk = get >>= lift . writeDirectory
@@ -58,7 +49,7 @@ initGshell path = do
     revName <- createCommitDir $ Parents []
     masterState .= revName
     writeStateToDisk
-    return $ Right [path]
+    return $ Right $ ResultPath path
     where initStructure = [
             Dir gshellDirName [
                 Dir commitsDirName [
@@ -117,20 +108,20 @@ commitGshell message currentWork = do
 isConflict :: WorkingState -> StateT GState IO Bool
 isConflict workState = do
     mainParentBranch <- gets $ generateBranch $ pure $ last $ workState ^. revisions
-    oldParentBranch <- use masterState >>= gets . generateBranch . pure
-    return $ not $ oldParentBranch `isSubsequenceOf` mainParentBranch
+    oldParentBranch <- use masterState
+    return $ not $ oldParentBranch `elem` mainParentBranch
 
 pushGshell :: FilePath -> StateT GState IO Result
 pushGshell currentWork = do
     workState <- getWorkState currentWork
     conflict <- isConflict workState
-    if conflict 
+    if conflict
     then
         return $ Left "Conflict! Do gshell pull first."
     else do
         masterState .= (last $ init $ workState ^. revisions)
         writeStateToDisk
-        return $ Right ["Push success"]
+        return $ Right $ ResultCommand Push
 
 merge :: WorkingState -> StateT GState IO FilePath
 merge workState = do
@@ -145,7 +136,7 @@ merge workState = do
     else do
         time1 <- use $ timeStamp mainParent
         time2 <- use $ timeStamp oldParent
-        if time1 > time2 
+        if time1 > time2
         then return mainParent
         else return oldParent
 
@@ -162,15 +153,18 @@ pullGshell currentWork = do
 logGshell :: FilePath -> StateT GState IO Result
 logGshell currentWork = do
     revs <- view revisions <$> getWorkState currentWork
-    history <- gets $ toListOf (commitsContents revs)
-    return $ Right history
+    history <- gets $ zipWith ((. (' ' :)) . (++)) revs
+                   . flip map revs . flip (view . revCommit)
+    return $ Right $ ResultInfo history
 
 -- return project root and current work directory
 findProjectRoot :: FilePath -> (FilePath, FilePath)
 findProjectRoot "/" = error "No project, no work"
-findProjectRoot path | isPrefixOf workDirName $ takeFileName path = (takeDirectory path, path)
-findProjectRoot path | workDirName `isInfixOf` path = findProjectRoot $ takeDirectory path
-findProjectRoot path = (path, path) --TODO bad bad bad idea
+findProjectRoot path | isPrefixOf workDirName $ takeFileName path
+    = (takeDirectory path, path)
+findProjectRoot path | workDirName `isInfixOf` path
+    = findProjectRoot $ takeDirectory path
+findProjectRoot path = (path, undefined)
 
 run :: Command -> FilePath -> IO Result
 run command path' = do

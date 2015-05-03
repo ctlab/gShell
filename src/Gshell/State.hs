@@ -3,6 +3,7 @@
 
 module Gshell.State ( GState (..)
                     , GDir (..)
+                    , Results (..)
                     , Result (..)
                     , WorkingState (..)
                     , Parents (..)
@@ -18,11 +19,12 @@ module Gshell.State ( GState (..)
                     , workingState
                     , masterState
                     , timeStamp 
-                    , commitsContents
+                    , revCommit
                     , generateState
                     ) where
 
 import           Gshell.Names
+import           Gshell.Command
 
 import           Control.Applicative
 import           Control.Lens
@@ -35,7 +37,12 @@ import           Data.List
 type GState = AnchoredDirTree String
 type GDir = DirTree String
 
-type Result = Either String [String]
+data Results = ResultPath FilePath
+             | ResultCommand Command
+             | ResultInfo [String]
+             deriving Show
+
+type Result = Either String Results
 
 data WorkingState = WorkingState { _revisions :: [FilePath]
                                  } deriving (Show, Read)
@@ -109,18 +116,18 @@ timeStamp :: Applicative f =>
            -> GState -> f GState
 timeStamp name = revisionRoot name.traverse.filteredByName timeStampFileName._file
 
-commitsContents :: Applicative f =>
-    [FileName]
+revCommit :: Applicative f =>
+    FileName
     -> (String -> f String)
     -> GState -> f GState
-commitsContents revisions = commitsRoot.traverse.filteredByNames revisions._contents.traverse.filteredByName commitFileName._file
+revCommit revision = commitsRoot.traverse.filteredByName revision._contents.traverse.filteredByName commitFileName._file
 
 generateState :: FilePath -> IO GState
 generateState path = do
     state <- readDirectoryWithL (\file -> if any (flip isPrefixOf $ takeFileName file) [commitFileName, workHelperFileName, masterFileName, parentsFileName, timeStampFileName]
                                             then readFile file
                                             else return "") path
-    return $ state & _dirTree %~ myTransformDir removeUnessesary [] . sortDirShape
+    return $ state & _dirTree %~ myTransformDir removeUnessesary []
     where
         removeUnessesary parent (Dir name contents)
             | workDirName `isPrefixOf` name && parent /= gshellDirName

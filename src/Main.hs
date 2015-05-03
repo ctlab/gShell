@@ -1,6 +1,8 @@
 module Main where
 
 import           Gshell.Run
+import           Gshell.State
+import           Gshell.Command
 
 import           Data.String        (fromString)
 
@@ -21,9 +23,13 @@ main = do
       "push"   -> run Push path
       "pull"   -> run Pull path
       "commit" -> run (Commit $ args !! 2) path
+      "checkout" -> run (EnterRevision $ args !! 2) path
       "enterRev" -> run (EnterRevision $ args !! 2) path
       "log"    -> run Log path
       _        -> error "invalid command"
     case res of
-         Right r -> mapM_ putStrLn r
+         Right r -> case r of
+                         ResultInfo info -> mapM_ putStrLn info
+                         ResultPath path -> putStrLn path
+                         ResultCommand command -> putStrLn $ "Success: " ++ show command
          _ -> print res

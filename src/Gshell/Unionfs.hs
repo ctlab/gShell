@@ -41,7 +41,7 @@ runWithExitCodeMessage proc options = do
     processHandle <- spawnProcess proc options
     exitCode <- waitForProcess processHandle
     case exitCode of
-         ExitSuccess -> return $ Right $ [show proc ++ " " ++ (last options)]
+         ExitSuccess -> return $ Right $ ResultInfo $ [show proc ++ " " ++ (last options)]
          ExitFailure i -> return $ Left $ show proc ++ " exit code: " ++ show i
 
 unmountWorkspaces :: GState -> IO Result
@@ -50,14 +50,14 @@ unmountWorkspaces state = do
     result <- mapM (unmountWorkspace . (path </>)) $ state ^.. workDirs._name
     if (null $ result ^..below _Right)
        then return $ Left $ concat $ intersperse ", " $ lefts result
-       else return $ Right $ concat $ rights result
+       else return $ Right $ ResultInfo $ concatMap (\(ResultInfo a) -> a) $ rights result
 
 unmountWorkspace :: FilePath -> IO Result
 unmountWorkspace toUmount = runEitherT $ do
     mounted <- lift $ isMountPoint toUmount
     result <- if mounted
         then lift $ unmountWorkspace' $ toUmount
-        else return $ Right $ [toUmount ++ " is not mounted"]
+        else return $ Right $ ResultInfo $ [toUmount ++ " is not mounted"]
     case result of
         Right b -> return b
         Left b -> left b
