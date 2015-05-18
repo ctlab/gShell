@@ -1,7 +1,7 @@
 language: haskell
 
 ghc:
-    - 7.8
+    - 7.10.1
 
 
 before_install:
@@ -11,6 +11,6 @@ before_install:
       nix-channel --update
 
 install:
-    - nix-shell -p '(haskellPackages.callPackage ./default.nix { })' --command 'exit 0'
+    - nix-shell -p '(haskellngPackages.callPackage ./default.nix { })' --command 'exit 0'
 
 script: true
