@@ -26,6 +26,7 @@ import           System.Directory.Tree
 import           System.FilePath
 
 import           Data.List
+import           Text.Regex.Posix
 
 writeStateToDisk :: StateT GState IO (AnchoredDirTree ())
 writeStateToDisk = get >>= lift . writeDirectory
@@ -41,7 +42,8 @@ createCommitDir parents = do
             Dir revName [
                   Dir mountDirName []
                 , File parentsFileName $ show parents
-                , File timeStampFileName time ] ]
+                , File timeStampFileName time
+                , File logFileName "" ] ]
 
 initGshell :: FilePath -> StateT GState IO Result
 initGshell path = do
@@ -87,6 +89,12 @@ setTimeStamp revFolder = do
     time <- lift $ show <$> getPOSIXTime
     timeStamp revFolder .= time
 
+setReadLog :: FilePath -> FilePath -> StateT GState IO ()
+setReadLog fullWorkDirName revName = do
+    log <- use $ unionfsLog fullWorkDirName
+    let wasOpened = map (last . words) $ filter (=~ "build_path.*unionfs_open.*path: .*") $ lines log
+    readLog revName .= show wasOpened
+
 getWorkState :: FilePath -> StateT GState IO WorkingState
 getWorkState currentWork = do
     let workName = takeFileName currentWork
@@ -98,6 +106,7 @@ commitGshell message currentWork = do
     workState <- getWorkState currentWork
     let parent = last $ workState ^. revisions
     setTimeStamp parent
+    setReadLog (takeFileName currentWork) parent
     writeCommitMessage message parent
     revName <- createCommitDir $ Parents [parent]
     workState' <- gets $ WorkingState . generateBranch [revName]

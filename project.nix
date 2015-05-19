@@ -1,6 +1,7 @@
 { mkDerivation, base, bytestring, cereal, containers, data-default
 , deepseq, directory, directory-tree, either, filepath, lens
-, process, random, stdenv, time, transformers, unix, Unixutils
+, process, random, regex-posix, stdenv, time, transformers, unix
+, Unixutils
 }:
 mkDerivation {
   pname = "gShell";
@@ -10,7 +11,7 @@ mkDerivation {
   isExecutable = true;
   buildDepends = [
     base bytestring cereal containers data-default deepseq directory
-    directory-tree either filepath lens process random time
+    directory-tree either filepath lens process random regex-posix time
     transformers unix Unixutils
   ];
   homepage = "https://github.com/ctlab/gShell";

@@ -18,6 +18,10 @@ module Gshell.Names ( gshellDirName
                     , masterFile
                     , timeStampFileName
                     , timeStampFile
+                    , unionfsLogFileName
+                    , unionfsLogFile
+                    , logFileName
+                    , logFile
                     , generateHash
                     , generateId
                     , gshellInited
@@ -41,7 +45,7 @@ commitFile path revName = path </> gshellDirName </> commitsDirName </> revName 
 revDirName = "rev"
 revDir path = path </> gshellDirName </> commitsDirName </> revDirName
 
-mountDirName = "toMount"
+mountDirName = "to-mount"
 mountDir path revName = path </> gshellDirName </> commitsDirName </> revName </> mountDirName
 
 workDirName = "work-id"
@@ -58,6 +62,12 @@ masterFile path = path </> gshellDirName </> commitsDirName </> masterFileName
 
 timeStampFileName = "time-stamp"
 timeStampFile path revName = path </> gshellDirName </> commitsDirName </> revName </> timeStampFileName
+
+unionfsLogFileName = "unionfs.log"
+unionfsLogFile path fullWorkDirName = path </> gshellDirName </> fullWorkDirName </> unionfsLogFileName
+
+logFileName = "read.log"
+logFile path revName = path </> gshellDirName </> commitsDirName </> revName </> logFileName
 
 generateHash :: IO FilePath
 generateHash = do

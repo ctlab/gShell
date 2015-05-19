@@ -64,7 +64,7 @@ precmd_gshell () {
         else
             if [[ -n $GSHELL ]]
             then
-                gshell commit "`pwd`" "`fc -n -l -1`"
+                gshell commit "`pwd`" "`fc -n -l -1`" # TODO Current directory
                 cd `pwd`
                 GSHELL_DONE=true
             fi

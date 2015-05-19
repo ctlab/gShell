@@ -17,8 +17,10 @@ module Gshell.State ( GState (..)
                     , revisionRoot
                     , workDirs
                     , workingState
+                    , unionfsLog
                     , masterState
                     , timeStamp 
+                    , readLog
                     , revCommit
                     , generateState
                     ) where
@@ -99,6 +101,12 @@ workingState :: Applicative f =>
            -> GState -> f GState
 workingState name = gshellRoot.traverse.filteredByName name._contents.traverse.filteredByName workHelperFileName._file
 
+unionfsLog :: Applicative f =>
+           FileName
+           -> (String -> f String)
+           -> GState -> f GState
+unionfsLog name = gshellRoot.traverse.filteredByName name._contents.traverse.filteredByName unionfsLogFileName._file
+
 masterState :: Applicative f =>
         (String -> f String)
         -> GState -> f GState
@@ -116,6 +124,12 @@ timeStamp :: Applicative f =>
            -> GState -> f GState
 timeStamp name = revisionRoot name.traverse.filteredByName timeStampFileName._file
 
+readLog  :: Applicative f =>
+           FileName
+           -> (String -> f String)
+           -> GState -> f GState
+readLog name = revisionRoot name.traverse.filteredByName logFileName._file
+
 revCommit :: Applicative f =>
     FileName
     -> (String -> f String)
@@ -124,9 +138,18 @@ revCommit revision = commitsRoot.traverse.filteredByName revision._contents.trav
 
 generateState :: FilePath -> IO GState
 generateState path = do
-    state <- readDirectoryWithL (\file -> if any (flip isPrefixOf $ takeFileName file) [commitFileName, workHelperFileName, masterFileName, parentsFileName, timeStampFileName]
-                                            then readFile file
-                                            else return "") path
+    state <- readDirectoryWithL (\file ->
+        if any (flip isPrefixOf $ takeFileName file)
+            [ commitFileName
+            , workHelperFileName
+            , masterFileName
+            , parentsFileName
+            , timeStampFileName
+            , unionfsLogFileName
+            , logFileName
+            ]
+        then readFile file
+        else return "") path
     return $ state & _dirTree %~ myTransformDir removeUnessesary []
     where
         removeUnessesary parent (Dir name contents)

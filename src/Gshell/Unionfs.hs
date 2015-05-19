@@ -21,28 +21,32 @@ import           System.Unix.Mount
 
 import           System.Directory.Tree
 import           System.FilePath.Posix
+import           System.FilePath
 
 import           Data.List
 
 unionfs :: FilePath
 unionfs = "unionfs"
 
-ufoptions :: [String]
-ufoptions = ["-ocow", "-orelaxed_permissions"]
+ufoptions :: FilePath -> FilePath -> [String]
+ufoptions path fullWorkDirName = ["-ocow", "-orelaxed_permissions", "-odebug_file=" ++ unionfsLogFile path fullWorkDirName]
 
-fuserumount :: FilePath
-fuserumount = "fusermount"
+fusermount :: FilePath
+fusermount = "fusermount"
 
 fuuoptions :: [String]
 fuuoptions = ["-uz"]
 
 runWithExitCodeMessage :: FilePath -> [String] -> IO Result
 runWithExitCodeMessage proc options = do
-    processHandle <- spawnProcess proc options
-    exitCode <- waitForProcess processHandle
+    (exitCode, stdo, stde) <- readProcessWithExitCode proc options ""
     case exitCode of
-         ExitSuccess -> return $ Right $ ResultInfo $ [show proc ++ " " ++ (last options)]
-         ExitFailure i -> return $ Left $ show proc ++ " exit code: " ++ show i
+         ExitSuccess -> return $ Right $
+            ResultInfo $ [show proc ++ " " ++ (last options)]
+         ExitFailure i -> return $ Left $
+            show proc ++ " exit code: " ++ show i
+                ++ "\nstdout: " ++ stdo
+                ++ "\nstderr: " ++ stde
 
 unmountWorkspaces :: GState -> IO Result
 unmountWorkspaces state = do
@@ -65,7 +69,7 @@ unmountWorkspace toUmount = runEitherT $ do
 unmountWorkspace' :: FilePath -> IO Result
 unmountWorkspace' workspace = do
     let options = fuuoptions ++ [workspace]
-    runWithExitCodeMessage fuserumount options
+    runWithExitCodeMessage fusermount options
 
 createWorkspace :: FilePath -> [FilePath] -> GState -> IO Result
 createWorkspace workingDir folders state = do
@@ -93,5 +97,5 @@ makeDirs folders = [intercalate ":" $ head' ++ tail']
 createWorkspace' :: FilePath -> [FilePath] -> FilePath -> IO Result
 createWorkspace' rootDir folders workspace = do
     let folders' = makeDirs $ map (flip (</>) mountDirName . (commitsDir rootDir </>)) $ folders
-    let options = ufoptions ++ folders' ++ [workspace]
+    let options = ufoptions rootDir (takeFileName workspace) ++ folders' ++ [workspace]
     runWithExitCodeMessage unionfs options
