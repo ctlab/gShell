@@ -7,6 +7,7 @@ module Gshell.State ( GState (..)
                     , Result (..)
                     , WorkingState (..)
                     , Parents (..)
+                    , OpenedFiles
                     , parentsRevs
                     , parents
                     , revisions
@@ -35,6 +36,7 @@ import           System.Directory.Tree
 import           System.FilePath.Posix
 
 import           Data.List
+import qualified Data.Map as M
 
 type GState = AnchoredDirTree String
 type GDir = DirTree String
@@ -55,6 +57,8 @@ data Parents = Parents { _parentsRevs :: [FilePath]
                        } deriving (Show, Read)
 
 makeLenses ''Parents
+
+type OpenedFiles = M.Map FilePath [FilePath]
 
 projectPath :: GState -> FilePath
 projectPath state = state ^. _anchor </> state ^. _dirTree._name

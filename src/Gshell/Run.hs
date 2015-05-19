@@ -26,6 +26,8 @@ import           System.Directory.Tree
 import           System.FilePath
 
 import           Data.List
+import qualified Data.List.Split           as S
+import qualified Data.Map                  as M
 import           Text.Regex.Posix
 
 writeStateToDisk :: StateT GState IO (AnchoredDirTree ())
@@ -43,7 +45,7 @@ createCommitDir parents = do
                   Dir mountDirName []
                 , File parentsFileName $ show parents
                 , File timeStampFileName time
-                , File logFileName "" ] ]
+                , File logFileName "[]" ] ]
 
 initGshell :: FilePath -> StateT GState IO Result
 initGshell path = do
@@ -90,9 +92,14 @@ setTimeStamp revFolder = do
     timeStamp revFolder .= time
 
 setReadLog :: FilePath -> FilePath -> StateT GState IO ()
-setReadLog fullWorkDirName revName = do
-    log <- use $ unionfsLog fullWorkDirName
-    let wasOpened = map (last . words) $ filter (=~ "build_path.*unionfs_open.*path: .*") $ lines log
+setReadLog currentWork revName = do
+    let workName = takeFileName currentWork
+    wasOpened <- liftM (M.fromListWith (++)
+        . map ((\[a,b] -> (init a, [tail b])) . S.splitOn mountDirName . last . S.split (S.startsWith revDirName))
+        . map (last . words)
+        . filter (=~ "build_path.*unionfs_open.*path: .*")
+        . lines)
+        (use $ unionfsLog workName)
     readLog revName .= show wasOpened
 
 getWorkState :: FilePath -> StateT GState IO WorkingState
@@ -100,13 +107,17 @@ getWorkState currentWork = do
     let workName = takeFileName currentWork
     gets $ read . view (workingState workName)
 
+getReadLog :: FilePath -> StateT GState IO OpenedFiles
+getReadLog revName = do
+    gets $ \a -> M.fromList (read $ view (readLog revName) a :: [(FilePath, [FilePath])])
+
 commitGshell :: String -> FilePath -> StateT GState IO Result
 commitGshell message currentWork = do
     lift $ unmountWorkspace currentWork
     workState <- getWorkState currentWork
     let parent = last $ workState ^. revisions
     setTimeStamp parent
-    setReadLog (takeFileName currentWork) parent
+    setReadLog currentWork parent
     writeCommitMessage message parent
     revName <- createCommitDir $ Parents [parent]
     workState' <- gets $ WorkingState . generateBranch [revName]
