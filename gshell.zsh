@@ -31,6 +31,9 @@ gshell () {
     log)
         $GSHELL_EXECUTABLE log `pwd`
         ;;
+    graph)
+        $GSHELL_EXECUTABLE graph `pwd`
+        ;;
     push)
         $GSHELL_EXECUTABLE push `pwd`
         ;;

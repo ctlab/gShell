@@ -1,8 +1,8 @@
 module Main where
 
+import           Gshell.Command
 import           Gshell.Run
 import           Gshell.State
-import           Gshell.Command
 
 import           Data.String        (fromString)
 
@@ -26,6 +26,7 @@ main = do
       "checkout" -> run (EnterRevision $ args !! 2) path
       "enterRev" -> run (EnterRevision $ args !! 2) path
       "log"    -> run Log path
+      "graph"    -> run GetGraph path
       _        -> error "invalid command"
     case res of
          Right r -> case r of

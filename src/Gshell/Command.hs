@@ -8,4 +8,5 @@ data Command = Init
              | Commit String
              | Push
              | Pull
-             | Log deriving ( Show )
+             | Log
+             | GetGraph deriving ( Show )

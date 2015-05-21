@@ -5,6 +5,7 @@ module Gshell.Run ( initGshell
                   ) where
 
 import           Gshell.Command
+import           Gshell.Graphs
 import           Gshell.Names
 import           Gshell.State
 import           Gshell.Unionfs
@@ -56,8 +57,8 @@ initGshell path = do
     return $ Right $ ResultPath path
     where initStructure = [
             Dir gshellDirName [
-                Dir commitsDirName [
-                    File masterFileName [] ] ] ]
+                File masterFileName []
+              , Dir commitsDirName [ ] ] ]
 
 enterGshell :: FilePath -> Maybe FilePath -> StateT GState IO Result
 enterGshell path revName = do
@@ -94,9 +95,13 @@ setTimeStamp revFolder = do
 setReadLog :: FilePath -> FilePath -> StateT GState IO ()
 setReadLog currentWork revName = do
     let workName = takeFileName currentWork
-    wasOpened <- liftM (M.fromListWith (++)
-        . map ((\[a,b] -> (init a, [tail b])) . S.splitOn mountDirName . last . S.split (S.startsWith revDirName))
-        . map (last . words)
+    wasOpened <- liftM (M.map nub . M.fromListWith (++)
+        . map ((\[a,b] -> (init a, [tail b]))
+            . S.splitOn mountDirName
+            . last
+            . S.split (S.startsWith revDirName)
+            . last
+            . words)
         . filter (=~ "build_path.*unionfs_open.*path: .*")
         . lines)
         (use $ unionfsLog workName)
@@ -106,10 +111,6 @@ getWorkState :: FilePath -> StateT GState IO WorkingState
 getWorkState currentWork = do
     let workName = takeFileName currentWork
     gets $ read . view (workingState workName)
-
-getReadLog :: FilePath -> StateT GState IO OpenedFiles
-getReadLog revName = do
-    gets $ \a -> M.fromList (read $ view (readLog revName) a :: [(FilePath, [FilePath])])
 
 commitGshell :: String -> FilePath -> StateT GState IO Result
 commitGshell message currentWork = do
@@ -177,6 +178,11 @@ logGshell currentWork = do
                    . flip map revs . flip (view . revCommit)
     return $ Right $ ResultInfo history
 
+getGraph :: FilePath -> StateT GState IO Result
+getGraph path = do
+    get >>= lift . printGraph
+    return $ Right $ ResultInfo []
+
 -- return project root and current work directory
 findProjectRoot :: FilePath -> (FilePath, FilePath)
 findProjectRoot "/" = error "No project, no work"
@@ -203,6 +209,8 @@ run command path' = do
         Clear | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         Log | existGshellRoot     -> runStateT (logGshell currentWork) state
         Log | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
+        GetGraph | existGshellRoot     -> runStateT (getGraph path) state
+        GetGraph | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         Push | existGshellRoot     -> runStateT (pushGshell currentWork) state
         Push | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         Pull | existGshellRoot     -> runStateT (pullGshell currentWork) state

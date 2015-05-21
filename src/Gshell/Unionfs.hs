@@ -4,9 +4,9 @@ module Gshell.Unionfs ( unmountWorkspace
                       , generateBranch
                       ) where
 
-import           Utility.Debug
 import           Gshell.Names
 import           Gshell.State
+import           Utility.Debug
 
 import           System.Exit
 import           System.Process
@@ -20,8 +20,8 @@ import           Data.Either
 import           System.Unix.Mount
 
 import           System.Directory.Tree
-import           System.FilePath.Posix
 import           System.FilePath
+import           System.FilePath.Posix
 
 import           Data.List
 
@@ -79,8 +79,7 @@ createWorkspace workingDir folders state = do
 generateBranch :: [String] -> GState -> [FilePath]
 generateBranch revs state = result
     where
-        result = sortBy cmp $ nub $ concatMap (generateBranch' state) revs
-        cmp rev1 rev2 = (state ^. timeStamp rev1) `compare` (state ^. timeStamp rev2)
+        result = sortBy (cmpRevs state) $ nub $ concatMap (generateBranch' state) revs
 
 generateBranch' :: GState -> String -> [FilePath]
 generateBranch' state rev = rev : otherParents

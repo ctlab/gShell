@@ -20,14 +20,16 @@ module Gshell.State ( GState (..)
                     , workingState
                     , unionfsLog
                     , masterState
-                    , timeStamp 
+                    , timeStamp
                     , readLog
+                    , getReadLog
                     , revCommit
                     , generateState
+                    , cmpRevs
                     ) where
 
-import           Gshell.Names
 import           Gshell.Command
+import           Gshell.Names
 
 import           Control.Applicative
 import           Control.Lens
@@ -36,7 +38,7 @@ import           System.Directory.Tree
 import           System.FilePath.Posix
 
 import           Data.List
-import qualified Data.Map as M
+import qualified Data.Map              as M
 
 type GState = AnchoredDirTree String
 type GDir = DirTree String
@@ -114,7 +116,7 @@ unionfsLog name = gshellRoot.traverse.filteredByName name._contents.traverse.fil
 masterState :: Applicative f =>
         (String -> f String)
         -> GState -> f GState
-masterState = commitsRoot.traverse.filteredByName masterFileName._file
+masterState = gshellRoot.traverse.filteredByName masterFileName._file
 
 parents :: Applicative f =>
            FileName
@@ -133,6 +135,10 @@ readLog  :: Applicative f =>
            -> (String -> f String)
            -> GState -> f GState
 readLog name = revisionRoot name.traverse.filteredByName logFileName._file
+
+getReadLog :: FilePath -> GState -> OpenedFiles
+getReadLog revName state = do
+    read $ view (readLog revName) state
 
 revCommit :: Applicative f =>
     FileName
@@ -165,3 +171,6 @@ myTransformDir :: (FilePath -> DirTree a -> DirTree a) -> FilePath -> DirTree a 
 myTransformDir f p t = case f p t of
                      (Dir n cs) -> Dir n $ map (myTransformDir f n) cs
                      t'         -> t'
+
+cmpRevs :: GState -> String -> String -> Ordering
+cmpRevs state rev1 rev2 = (state ^. timeStamp rev1) `compare` (state ^. timeStamp rev2)

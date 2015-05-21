@@ -58,7 +58,7 @@ parentsFileName = "parents"
 parentsFile path revName  = path </> gshellDirName </> commitsDirName </> revName </> parentsFileName
 
 masterFileName = "master"
-masterFile path = path </> gshellDirName </> commitsDirName </> masterFileName
+masterFile path = path </> gshellDirName </> masterFileName
 
 timeStampFileName = "time-stamp"
 timeStampFile path revName = path </> gshellDirName </> commitsDirName </> revName </> timeStampFileName
