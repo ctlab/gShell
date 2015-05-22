@@ -46,7 +46,7 @@ createCommitDir parents = do
                   Dir mountDirName []
                 , File parentsFileName $ show parents
                 , File timeStampFileName time
-                , File logFileName "[]" ] ]
+                , File logFileName (show M.empty) ] ]
 
 initGshell :: FilePath -> StateT GState IO Result
 initGshell path = do
