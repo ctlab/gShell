@@ -11,6 +11,6 @@ before_install:
       nix-channel --update
 
 install:
-    - nix-shell -p '(haskellngPackages.callPackage ./default.nix { })' --command 'exit 0'
+    - nix-shell --option binary-caches http://hydra.cryp.to -p '(haskellngPackages.callPackage ./default.nix { })' --command 'exit 0'
 
 script: true
