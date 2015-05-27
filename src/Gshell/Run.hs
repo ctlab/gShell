@@ -46,7 +46,7 @@ createCommitDir parents = do
                   Dir mountDirName []
                 , File parentsFileName $ show parents
                 , File timeStampFileName time
-                , File logFileName (show M.empty) ] ]
+                , File logFileName $ "fromList []"] ]
 
 initGshell :: FilePath -> StateT GState IO Result
 initGshell path = do
@@ -123,6 +123,7 @@ commitGshell message currentWork = do
     revName <- createCommitDir $ Parents [parent]
     workState' <- gets $ WorkingState . generateBranch [revName]
     workingState (takeFileName currentWork) .= show workState'
+    unionfsLog (takeFileName currentWork) .= ""
     writeStateToDisk
     get >>= lift . createWorkspace currentWork (workState' ^. revisions)
 
