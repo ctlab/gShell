@@ -14,7 +14,8 @@ main :: IO ()
 main = do
     args' <- getArgs
     let args = map fromString args'
-        [command, path'] = take 2 args
+    if length args < 2 then error "Invalid command" else return ()
+    let [command, path'] = take 2 args
     path <- createDirectoryIfMissing True path' >> canonicalizePath path'
     res <- case command of
       "init"   -> run Init path
@@ -24,6 +25,7 @@ main = do
       "pull"   -> run Pull path
       "commit" -> run (Commit $ args !! 2) path
       "checkout" -> run (EnterRevision $ args !! 2) path
+      "rollback" -> run Rollback path
       "enterRev" -> run (EnterRevision $ args !! 2) path
       "log"    -> run Log path
       "graph"    -> run GetGraph path

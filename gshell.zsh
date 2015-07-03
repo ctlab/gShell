@@ -31,6 +31,10 @@ gshell () {
     log)
         $GSHELL_EXECUTABLE log `pwd`
         ;;
+    rollback)
+        $GSHELL_EXECUTABLE rollback `pwd`
+        cd `pwd`
+        ;;
     graph)
         $GSHELL_EXECUTABLE graph `pwd`
         ;;
@@ -74,3 +78,11 @@ precmd_gshell () {
         fi
     fi
 }
+
+fpath=(`pwd`/completion $fpath)
+
+autoload -U compinit
+compinit
+ 
+# show completion menu when number of options is at least 2
+zstyle ':completion:*' menu select=2

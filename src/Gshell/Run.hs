@@ -184,6 +184,18 @@ getGraph path = do
     get >>= lift . printGraph
     return $ Right $ ResultInfo []
 
+rollBackGshell :: FilePath -> FilePath -> StateT GState IO Result
+rollBackGshell path currentWork = do
+    lift $ unmountWorkspace currentWork
+    workState <- getWorkState currentWork
+    let parent = last $ init $ init $ workState ^. revisions
+    lift $ print workState
+    workState' <- gets $ WorkingState . generateBranch [parent]
+    lift $ print workState'
+    workingState (takeFileName currentWork) .= show workState'
+    writeStateToDisk
+    get >>= lift . createWorkspace currentWork (workState' ^. revisions)
+
 -- return project root and current work directory
 findProjectRoot :: FilePath -> (FilePath, FilePath)
 findProjectRoot "/" = error "No project, no work"
@@ -206,6 +218,8 @@ run command path' = do
         Enter | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         (EnterRevision revName) | existGshellRoot -> runStateT (enterGshell path $ Just revName) state
         (EnterRevision _) | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
+        Rollback | existGshellRoot -> runStateT (rollBackGshell path currentWork) state
+        Rollback | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         Clear | existGshellRoot     -> runStateT (clearGshell path) state
         Clear | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         Log | existGshellRoot     -> runStateT (logGshell currentWork) state
