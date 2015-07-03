@@ -1,0 +1,45 @@
+#compdef gshell
+ 
+_gshell() { 
+    local curcontext="$curcontext" state line
+    typeset -A opt_args
+ 
+    _arguments \
+        '1: :->action'\
+        '3: :->revisions'\
+        '*: :->folders'
+ 
+    case $state in
+    action)
+        _arguments '1:Action:(init enter on off checkout enterRev log rollback graph push pull clear)'
+    ;;
+    revisions)
+        if [[ $words[2] == 'enterRev' ]]
+        then
+            local -a folder
+            local -a revisions
+            folder=$words[3]
+            if [[ -e $folder ]]
+            then
+                revisions=(`ls $folder/.gshell/commits`)
+                compadd "$@" $revisions
+            fi
+        fi
+    ;;
+    *)
+        case $words[2] in
+        checkout)
+            local -a revisions
+            local -a logs
+            logs=(`gshell log`)
+            rev="[!rev]"
+            revisions=(${(@)logs//#${~rev}*/})
+            compadd "$@" $revisions
+        ;;
+        *)
+            _files 
+        esac
+    esac
+}
+ 
+_gshell "$@"
