@@ -1,13 +1,16 @@
 module Gshell.Command ( Command(..)
+                      , Options(..)
                       ) where
 
-data Command = Init
-             | Enter
+data Command = Init FilePath
+             | Enter FilePath
              | EnterRevision FilePath
-             | Clear
+             | Clear FilePath
              | Commit String
              | Push
              | Pull
              | Rollback
              | Log
              | GetGraph deriving ( Show )
+
+data Options = Options Command FilePath deriving Show

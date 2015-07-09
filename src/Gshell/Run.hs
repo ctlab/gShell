@@ -205,23 +205,23 @@ findProjectRoot path | workDirName `isInfixOf` path
     = findProjectRoot $ takeDirectory path
 findProjectRoot path = (path, undefined)
 
-run :: Command -> FilePath -> IO Result
-run command path' = do
+run :: Options -> IO Result
+run (Options command path') = do
     let (path, currentWork) = findProjectRoot path'
     state <- generateState path
     evaluate $ rnf $ show state --fix for proper mater update, TODO get why it's like that
     let existGshellRoot = not $ null $ state ^. gshellRoot
     (result, newState) <- case command of
-        Init  | not existGshellRoot -> runStateT (initGshell path) state
-        Init  | existGshellRoot     -> return (Left $ gshellInited existGshellRoot, state)
-        Enter | existGshellRoot     -> runStateT (enterGshell path Nothing) state
-        Enter | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
+        (Init ipath)  | not existGshellRoot -> runStateT (initGshell ipath) state
+        (Init _)  | existGshellRoot     -> return (Left $ gshellInited existGshellRoot, state)
+        (Enter epath) | existGshellRoot     -> runStateT (enterGshell epath Nothing) state
+        (Enter _) | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         (EnterRevision revName) | existGshellRoot -> runStateT (enterGshell path $ Just revName) state
         (EnterRevision _) | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         Rollback | existGshellRoot -> runStateT (rollBackGshell path currentWork) state
         Rollback | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
-        Clear | existGshellRoot     -> runStateT (clearGshell path) state
-        Clear | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
+        (Clear cpath) | existGshellRoot     -> runStateT (clearGshell cpath) state
+        (Clear _) | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         Log | existGshellRoot     -> runStateT (logGshell currentWork) state
         Log | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         GetGraph | existGshellRoot     -> runStateT (getGraph path) state
