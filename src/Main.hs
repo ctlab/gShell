@@ -25,10 +25,9 @@ main = do
     res <- run options
     case res of
          Right r -> case r of
-                         ResultInfo info -> mapM_ putStrLn info
-                         ResultPath path -> putStrLn path
-                         ResultCommand command -> putStrLn 
-                            $ "Success: " ++ show command 
+            ResultInfo info -> mapM_ putStrLn info
+            ResultPath path -> putStrLn path
+            ResultCommand command -> putStrLn $ "Success: " ++ show command 
          _ -> print res
 
 checkAndAdjust :: FilePath -> (FilePath -> Command) -> IO Options
@@ -57,7 +56,9 @@ parseCommand = subparser $
     command "rollback" (parseRollback `withInfo` "Undo changes") <>
     command "enterRev" (parseEnterRevision `withInfo` "Enter project with gshell inited at a specific revision") <>
     command "log"      (parseLog `withInfo` "Show log for current workspace") <>
-    command "graph"    (parseGetGraph `withInfo` "Show graph from current workspace")
+    command "graph"    (parseGetGraph `withInfo` "Show graph from current workspace") <>
+    command "off"      (option disabled idm `withInfo` "Temporary disable gshell") <>
+    command "on"      (option disabled idm `withInfo` "Temporary enable gshell")
 
 parsePath :: FilePath -> Parser FilePath
 parsePath currentPath = strOption $ short 'p' <> long "path" <> metavar "WORKING-PATH" <> help "Project's path where gshell is inited" <> value currentPath

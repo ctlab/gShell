@@ -1,8 +1,3 @@
-autoload -U add-zsh-hook
-
-add-zsh-hook preexec preexec_gshell
-add-zsh-hook precmd precmd_gshell
-
 # Dont forget to compile with debug = false from Debug.hs
 
 gshell () {
@@ -20,30 +15,21 @@ gshell () {
         GSHELL=true
         ;;
     checkout)
-        to_cd=`$GSHELL_EXECUTABLE checkout $(pwd) $2 | tail -1 | awk '{print $2;}'` # add cheching for Left
-        cd ${to_cd}
+        to_cd=`$GSHELL_EXECUTABLE checkout $(pwd) $2 | tail -1 | awk '{print $2;}'` # add checking for Left
+        cd "$to_cd"
         ;;
     enter | enterRev)
-        to_cd=`$GSHELL_EXECUTABLE $@ | tail -1 | awk '{print $2;}'` # add cheching for Left
-        cd ${to_cd}
+        to_cd=`$GSHELL_EXECUTABLE $@ | tail -1 | awk '{print $2;}'` # add checking for Left
+        OLD_ZDOTDIR="$ZDOTDIR" ZDOTDIR="`pwd`" TOCD="$to_cd" zsh -i
         export GSHELL=true
         ;;
-    log)
-        $GSHELL_EXECUTABLE log `pwd`
-        ;;
     rollback)
-        $GSHELL_EXECUTABLE rollback `pwd`
-        cd `pwd`
-        ;;
-    graph)
-        $GSHELL_EXECUTABLE graph `pwd`
-        ;;
-    push)
-        $GSHELL_EXECUTABLE push `pwd`
+        $GSHELL_EXECUTABLE rollback -p "`pwd`"
+        cd "`pwd`"
         ;;
     pull)
-        $GSHELL_EXECUTABLE pull `pwd`
-        cd `pwd`
+        $GSHELL_EXECUTABLE pull -p "`pwd`"
+        cd "`pwd`"
         ;;
     clear)
         unset GSHELL
@@ -72,17 +58,22 @@ precmd_gshell () {
             if [[ -n $GSHELL ]]
             then
                 gshell commit "`pwd`" "`fc -n -l -1`" # TODO Current directory
-                cd `pwd`
+                cd "`pwd`"
                 GSHELL_DONE=true
             fi
         fi
     fi
 }
 
-fpath=(`pwd`/completion $fpath)
+fpath=("`pwd`/completion" $fpath)
 
 autoload -U compinit
 compinit
  
 # show completion menu when number of options is at least 2
 zstyle ':completion:*' menu select=2
+
+autoload -U add-zsh-hook
+
+add-zsh-hook preexec preexec_gshell
+add-zsh-hook precmd precmd_gshell
