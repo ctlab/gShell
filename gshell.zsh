@@ -20,8 +20,7 @@ gshell () {
         ;;
     enter | enterRev)
         to_cd=`$GSHELL_EXECUTABLE $@ | tail -1 | awk '{print $2;}'` # add checking for Left
-        OLD_ZDOTDIR="$ZDOTDIR" ZDOTDIR="`pwd`" TOCD="$to_cd" zsh -i
-        export GSHELL=true
+        GSHELL=true OLD_ZDOTDIR="$ZDOTDIR" ZDOTDIR="`pwd`" TOCD="$to_cd" zsh -i
         ;;
     rollback)
         $GSHELL_EXECUTABLE rollback -p "`pwd`"
@@ -57,7 +56,7 @@ precmd_gshell () {
         else
             if [[ -n $GSHELL ]]
             then
-                gshell commit "`pwd`" "`fc -n -l -1`" # TODO Current directory
+                gshell commit "`fc -n -l -1`"
                 cd "`pwd`"
                 GSHELL_DONE=true
             fi

@@ -21,7 +21,6 @@ main = do
         (Options (Clear path) a) -> checkAndAdjust path Clear
         (Options (Enter path) a) -> checkAndAdjust path Enter
         _ -> return options'
-    print options
     res <- run options
     case res of
          Right r -> case r of
@@ -61,7 +60,11 @@ parseCommand = subparser $
     command "on"      (option disabled idm `withInfo` "Temporary enable gshell")
 
 parsePath :: FilePath -> Parser FilePath
-parsePath currentPath = strOption $ short 'p' <> long "path" <> metavar "WORKING-PATH" <> help "Project's path where gshell is inited" <> value currentPath
+parsePath currentPath = strOption
+    $ short 'p' <> long "path"
+    <> metavar "WORKING-PATH"
+    <> help "Project's path where gshell is inited"
+    <> value currentPath
 
 parseInit :: Parser Command
 parseInit = Init <$> argument str (metavar "PROJECT-FOLDER")
