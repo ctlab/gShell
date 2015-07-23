@@ -196,6 +196,17 @@ rollBackGshell path currentWork = do
     writeStateToDisk
     get >>= lift . createWorkspace currentWork (workState' ^. revisions)
 
+genMakefile :: FilePath -> FilePath -> StateT GState IO Result
+genMakefile path currentWork = do
+    workState <- getWorkState currentWork
+    contents <- lift $ mapM (
+        liftM (filter (\a -> a /= "." && a /= ".."))
+        . getDirectoryContents
+        . mountDir path) $ workState ^. revisions
+    let revAndContents = (workState ^. revisions) `zip` contents
+    nonEmptyRevs <- gets $ \state -> [ view (revCommit x) state | (x, a) <- revAndContents, length a /= 0 || (length $ M.keys $ getReadLog x state) > 0]
+    return $ Right $ ResultInfo $ "#!/usr/bin/env zsh":nonEmptyRevs
+
 -- return project root and current work directory
 findProjectRoot :: FilePath -> (FilePath, FilePath)
 findProjectRoot "/" = error "No project, no work"
@@ -226,6 +237,8 @@ run (Options command path') = do
         Log | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         GetGraph | existGshellRoot     -> runStateT (getGraph path) state
         GetGraph | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
+        Makefile | existGshellRoot     -> runStateT (genMakefile path currentWork) state
+        Makefile | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         Push | existGshellRoot     -> runStateT (pushGshell currentWork) state
         Push | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
         Pull | existGshellRoot     -> runStateT (pullGshell currentWork) state

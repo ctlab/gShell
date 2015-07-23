@@ -11,6 +11,7 @@ data Command = Init FilePath
              | Pull
              | Rollback
              | Log
+             | Makefile
              | GetGraph deriving ( Show )
 
 data Options = Options Command FilePath deriving Show

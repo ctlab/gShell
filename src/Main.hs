@@ -56,8 +56,9 @@ parseCommand = subparser $
     command "enterRev" (parseEnterRevision `withInfo` "Enter project with gshell inited at a specific revision") <>
     command "log"      (parseLog `withInfo` "Show log for current workspace") <>
     command "graph"    (parseGetGraph `withInfo` "Show graph from current workspace") <>
+    command "makefile" (parseMakefile `withInfo` "Output script to reproduce workspace") <>
     command "off"      (option disabled idm `withInfo` "Temporary disable gshell") <>
-    command "on"      (option disabled idm `withInfo` "Temporary enable gshell")
+    command "on"       (option disabled idm `withInfo` "Temporary enable gshell")
 
 parsePath :: FilePath -> Parser FilePath
 parsePath currentPath = strOption
@@ -86,6 +87,9 @@ parseLog = pure Log
 
 parseGetGraph :: Parser Command
 parseGetGraph = pure GetGraph
+
+parseMakefile :: Parser Command
+parseMakefile = pure Makefile 
 
 parseCommit :: Parser Command
 parseCommit = Commit <$> argument str (metavar "COMMIT-MESSAGE")
