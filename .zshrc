@@ -6,4 +6,6 @@ source ~/.zshrc
 
 PROMPT="GSHELL ][ $PROMPT"
 
+trap 'fusermount -uz $(pwd)' EXIT
+
 cd "$TOCD"
