@@ -1,7 +1,4 @@
-module Gshell.Run ( initGshell
-                  , enterGshell
-                  , clearGshell
-                  , run
+module Gshell.Run ( run
                   ) where
 
 import           Gshell.Command
@@ -196,15 +193,16 @@ rollBackGshell path currentWork = do
     writeStateToDisk
     get >>= lift . createWorkspace currentWork (workState' ^. revisions)
 
-genMakefile :: FilePath -> FilePath -> StateT GState IO Result
-genMakefile path currentWork = do
+genMakefile :: Maybe FilePath -> FilePath -> FilePath -> StateT GState IO Result
+genMakefile file path currentWork = do
     workState <- getWorkState currentWork
     contents <- lift $ mapM (
         liftM (filter (\a -> a /= "." && a /= ".."))
         . getDirectoryContents
         . mountDir path) $ workState ^. revisions
-    let revAndContents = (workState ^. revisions) `zip` contents
-    nonEmptyRevs <- gets $ \state -> [ view (revCommit x) state | (x, a) <- revAndContents, length a /= 0 || (length $ M.keys $ getReadLog x state) > 0]
+    let revAndContents = case file of {Just f -> reverse . dropWhile (not . elem f . snd) . reverse; 
+        Nothing -> id} $ (workState ^. revisions) `zip` contents
+    nonEmptyRevs <- gets $ \state -> [ view (revCommit x) state | (x, a) <- revAndContents, length a /= 0 {-|| (length $ M.keys $ getReadLog x state) > 0-}]
     return $ Right $ ResultInfo $ "#!/usr/bin/env zsh":nonEmptyRevs
 
 -- return project root and current work directory
@@ -223,26 +221,48 @@ run (Options command path') = do
     evaluate $ rnf $ show state --fix for proper mater update, TODO get why it's like that
     let existGshellRoot = not $ null $ state ^. gshellRoot
     (result, newState) <- case command of
-        (Init ipath)  | not existGshellRoot -> runStateT (initGshell ipath) state
-        (Init _)  | existGshellRoot     -> return (Left $ gshellInited existGshellRoot, state)
-        (Enter epath) | existGshellRoot     -> runStateT (enterGshell epath Nothing) state
-        (Enter _) | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
-        (EnterRevision revName) | existGshellRoot -> runStateT (enterGshell path $ Just revName) state
-        (EnterRevision _) | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
-        Rollback | existGshellRoot -> runStateT (rollBackGshell path currentWork) state
-        Rollback | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
-        (Clear cpath) | existGshellRoot     -> runStateT (clearGshell cpath) state
-        (Clear _) | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
-        Log | existGshellRoot     -> runStateT (logGshell currentWork) state
-        Log | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
-        GetGraph | existGshellRoot     -> runStateT (getGraph path) state
-        GetGraph | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
-        Makefile | existGshellRoot     -> runStateT (genMakefile path currentWork) state
-        Makefile | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
-        Push | existGshellRoot     -> runStateT (pushGshell currentWork) state
-        Push | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
-        Pull | existGshellRoot     -> runStateT (pullGshell currentWork) state
-        Pull | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
-        (Commit message) | existGshellRoot -> runStateT (commitGshell message currentWork) state
-        (Commit _) | not existGshellRoot -> return (Left $ gshellInited existGshellRoot, state)
+        (Init ipath)  | not existGshellRoot->
+             runStateT (initGshell ipath) state
+        (Init _)  | existGshellRoot ->
+             return (Left $ gshellInited existGshellRoot, state)
+        (Enter epath) | existGshellRoot ->
+             runStateT (enterGshell epath Nothing) state
+        (Enter _) | not existGshellRoot ->
+             return (Left $ gshellInited existGshellRoot, state)
+        (EnterRevision revName) | existGshellRoot ->
+             runStateT (enterGshell path $ Just revName) state
+        (EnterRevision _) | not existGshellRoot ->
+             return (Left $ gshellInited existGshellRoot, state)
+        Rollback | existGshellRoot ->
+             runStateT (rollBackGshell path currentWork) state
+        Rollback | not existGshellRoot ->
+             return (Left $ gshellInited existGshellRoot, state)
+        (Clear cpath) | existGshellRoot ->
+             runStateT (clearGshell cpath) state
+        (Clear _) | not existGshellRoot ->
+             return (Left $ gshellInited existGshellRoot, state)
+        Log | existGshellRoot ->
+             runStateT (logGshell currentWork) state
+        Log | not existGshellRoot ->
+             return (Left $ gshellInited existGshellRoot, state)
+        GetGraph | existGshellRoot ->
+             runStateT (getGraph path) state
+        GetGraph | not existGshellRoot ->
+             return (Left $ gshellInited existGshellRoot, state)
+        (Makefile file)| existGshellRoot ->
+             runStateT (genMakefile file path currentWork) state
+        (Makefile _) | not existGshellRoot ->
+             return (Left $ gshellInited existGshellRoot, state)
+        Push | existGshellRoot ->
+             runStateT (pushGshell currentWork) state
+        Push | not existGshellRoot ->
+             return (Left $ gshellInited existGshellRoot, state)
+        Pull | existGshellRoot ->
+             runStateT (pullGshell currentWork) state
+        Pull | not existGshellRoot ->
+             return (Left $ gshellInited existGshellRoot, state)
+        (Commit message) | existGshellRoot ->
+             runStateT (commitGshell message currentWork) state
+        (Commit _) | not existGshellRoot ->
+             return (Left $ gshellInited existGshellRoot, state)
     return result

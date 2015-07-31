@@ -4,8 +4,6 @@ import           Gshell.Command
 import           Gshell.Run
 import           Gshell.State
 
-import           Data.String         (fromString)
-
 import           System.Directory
 import           System.Environment  (getArgs)
 
@@ -26,14 +24,14 @@ main = do
          Right r -> case r of
             ResultInfo info -> mapM_ putStrLn info
             ResultPath path -> putStrLn path
-            ResultCommand command -> putStrLn $ "Success: " ++ show command 
+            ResultCommand command -> putStrLn $ "Success: " ++ show command
          _ -> print res
 
 checkAndAdjust :: FilePath -> (FilePath -> Command) -> IO Options
 checkAndAdjust path f = do
     exist <- doesDirectoryExist path
-    truePath <- if exist 
-            then canonicalizePath path 
+    truePath <- if exist
+            then canonicalizePath path
             else error "Create project's folder first"
     return $ Options (f truePath) truePath
 
@@ -89,7 +87,7 @@ parseGetGraph :: Parser Command
 parseGetGraph = pure GetGraph
 
 parseMakefile :: Parser Command
-parseMakefile = pure Makefile 
+parseMakefile = Makefile <$> (argument (Just <$> str) (metavar "FILEPATH" <> value Nothing))
 
 parseCommit :: Parser Command
 parseCommit = Commit <$> argument str (metavar "COMMIT-MESSAGE")
