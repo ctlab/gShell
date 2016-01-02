@@ -22,7 +22,7 @@ gshell () {
         ;;
     enter | enterRev)
         to_cd=`$GSHELL_EXECUTABLE $@ | tail -1 | awk '{print $2;}'` # add checking for Left
-        GSHELL=true OLD_ZDOTDIR="$ZDOTDIR" ZDOTDIR="$GSHELL_ZSH_CONFIG" TOCD="$to_cd" zsh -i
+        GSHELL=true GSHELL_PROJECT=`basename $2` OLD_ZDOTDIR="$ZDOTDIR" ZDOTDIR="$GSHELL_ZSH_CONFIG" TOCD="$to_cd" zsh -i
         ;;
     rollback)
         $GSHELL_EXECUTABLE rollback -p "`pwd`"
