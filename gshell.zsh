@@ -1,5 +1,7 @@
 # Dont forget to compile with debug = false from Debug.hs
 
+GSHELL_ZSH_CONFIG="`pwd`"
+
 gshell () {
     if [[ -z $GSHELL_EXECUTABLE ]]
     then
@@ -20,7 +22,7 @@ gshell () {
         ;;
     enter | enterRev)
         to_cd=`$GSHELL_EXECUTABLE $@ | tail -1 | awk '{print $2;}'` # add checking for Left
-        GSHELL=true OLD_ZDOTDIR="$ZDOTDIR" ZDOTDIR="`pwd`" TOCD="$to_cd" zsh -i
+        GSHELL=true OLD_ZDOTDIR="$ZDOTDIR" ZDOTDIR="$GSHELL_ZSH_CONFIG" TOCD="$to_cd" zsh -i
         ;;
     rollback)
         $GSHELL_EXECUTABLE rollback -p "`pwd`"
