@@ -1,6 +1,6 @@
 # Dont forget to compile with debug = false from Debug.hs
 
-GSHELL_ZSH_CONFIG="`pwd`"
+GSHELL_ZSH_CONFIG=$(dirname `readlink -f "$0"`)
 
 gshell () {
     if [[ -z $GSHELL_EXECUTABLE ]]
